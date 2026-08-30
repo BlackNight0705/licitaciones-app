@@ -1,0 +1,39 @@
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environment
+venv/
+*/venv/
+
+# Environment variables
+.env
+*.env
+*/.env
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Logs
+*.log
+
+# Editor configs
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Node (si tienes frontend)
+node_modules/
+
+# Supabase
+supabase/.temp/
+supabase/.branches/
+supabase/.config
+supabase/.local
