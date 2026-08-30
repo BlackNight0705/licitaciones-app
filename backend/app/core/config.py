@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 from pydantic_settings import BaseSettings
+=======
+from pydantic import BaseSettings
+>>>>>>> 11d52f023bfa734825f424886b7c12377d32e0ef
 
 class Settings(BaseSettings):
     # Nombre del proyecto
