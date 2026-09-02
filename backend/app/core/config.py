@@ -1,8 +1,4 @@
-<<<<<<< HEAD
 from pydantic_settings import BaseSettings
-=======
-from pydantic import BaseSettings
->>>>>>> 11d52f023bfa734825f424886b7c12377d32e0ef
 
 class Settings(BaseSettings):
     # Nombre del proyecto
@@ -14,9 +10,9 @@ class Settings(BaseSettings):
     # Seguridad
     JWT_SECRET: str
     JWT_ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 horas
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24
 
-    # Email (Resend / SendGrid)
+    # Email (Resend API)
     EMAIL_API_KEY: str | None = None
     EMAIL_FROM: str | None = None
 
