@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { DollarSign, AlertCircle, CreditCard, CheckCircle2 } from 'lucide-react';
-import api from '../api/axiosClient'; 
+import api from '../../api/axiosClient'; 
 
 const SeccionPagosModal = ({ licitacion, onPagoExitoso }) => {
   const [modalAbierto, setModalAbierto] = useState(false);
