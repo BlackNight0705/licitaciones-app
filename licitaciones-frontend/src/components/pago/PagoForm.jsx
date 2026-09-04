@@ -11,29 +11,26 @@ const SeccionPagosModal = ({ licitacion, onPagoExitoso, readOnly = false }) => {
 
   if (!licitacion) return null;
 
-  // 1. Detectar si está cobrada revisando múltiples campos posibles de tu API/BD
-  const estadoTexto = String(licitacion.licitacion_estado || licitacion.estado || '').toLowerCase();
-  const esCobradaBoolean = Boolean(licitacion.cobrada || licitacion.is_cobrada || licitacion.pagada);
-  
-  const estaCobradaGeneral = 
-    esCobradaBoolean || 
-    estadoTexto.includes('cobrad') || 
-    estadoTexto.includes('ganad') || 
-    estadoTexto.includes('adjudicada');
-
+  // 1. Datos base
   const presupuestoTotal = Number(licitacion.licitacion_presupuesto_maximo || licitacion.presupuesto_maximo || licitacion.presupuesto) || 0;
   const pagosRegistrados = licitacion.pagos || [];
   const totalPagado = pagosRegistrados.reduce((acc, p) => acc + (Number(p.pago_monto || p.monto) || 0), 0);
   
-  // 2. Si está cobrada por bandera o el total pagado cubre el presupuesto, el saldo restante es 0
-  const saldoPendiente = (estaCobradaGeneral || (presupuestoTotal > 0 && totalPagado >= presupuestoTotal)) 
-    ? 0 
-    : Math.max(0, presupuestoTotal - totalPagado);
+  // 2. El saldo pendiente real basado puramente en las matemáticas (Presupuesto - Pagado)
+  const saldoPendiente = Math.max(0, presupuestoTotal - totalPagado);
 
-  const estaPagadaTotalmente = saldoPendiente === 0 || estaCobradaGeneral;
+  // 3. Está pagada totalmente SOLO si el saldo restante es 0 o si la etiqueta superior indica explícitamente cobrada
+  const estadoTexto = String(licitacion.licitacion_estado || licitacion.estado || '').toLowerCase();
+  const esCobradaExplicita = Boolean(licitacion.cobrada || licitacion.is_cobrada) || estadoTexto.includes('cobrad');
+  
+  const estaPagadaTotalmente = saldoPendiente === 0 || esCobradaExplicita;
 
-  const estadosBloqueados = ["perdida", "finalizada", "cancelada", "cobrada", "ganada", "adjudicada"];
-  const puedeRealizarPago = !readOnly && !estadosBloqueados.includes(estadoTexto) && saldoPendiente > 0 && !estaCobradaGeneral;
+  // 4. Estados donde de verdad no se debe permitir pagar nunca (como pérdida o cancelada)
+  const estadosBloqueadosAbsolutos = ["perdida", "finalizada", "cancelada"];
+  const estadoBloqueado = estadosBloqueadosAbsolutos.includes(estadoTexto);
+
+  // 5. EL CAMBIO CLAVE: Permite pagar si no es solo lectura, el estado no está bloqueado y aún hay saldo pendiente por cubrir
+  const puedeRealizarPago = !readOnly && !estadoBloqueado && saldoPendiente > 0;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -105,6 +102,7 @@ const SeccionPagosModal = ({ licitacion, onPagoExitoso, readOnly = false }) => {
         </div>
       </div>
 
+      {/* Si aún hay saldo por pagar y el estado lo permite, el botón de pago estará activo */}
       {puedeRealizarPago ? (
         <button
           onClick={() => setModalAbierto(true)}
@@ -118,8 +116,8 @@ const SeccionPagosModal = ({ licitacion, onPagoExitoso, readOnly = false }) => {
           <AlertCircle className="w-4 h-4 shrink-0" />
           <span>
             {estaPagadaTotalmente 
-              ? "Esta licitación ya se encuentra cobrada y saldada ($0.00 restante)." 
-              : `El registro de pagos no está disponible para este estado.`}
+              ? "Esta licitación ya se encuentra pagada en su totalidad ($0.00 restante)." 
+              : `El registro de pagos no está disponible para el estado "${licitacion.licitacion_estado}".`}
           </span>
         </div>
       )}
