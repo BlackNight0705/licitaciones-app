@@ -9,38 +9,17 @@ const SeccionPagosModal = ({ licitacion, onPagoExitoso, readOnly = false }) => {
   const [error, setError] = useState('');
   const [cargando, setCargando] = useState(false);
 
+  // 1. Cálculos sencillos basados estrictamente en el presupuesto total
+  const presupuestoTotal = Number(licitacion.licitacion_presupuesto_maximo) || 0;
   const pagosRegistrados = licitacion.pagos || [];
   const totalPagado = pagosRegistrados.reduce((acc, p) => acc + (Number(p.pago_monto) || 0), 0);
-
-  // CORRECCIÓN CLAVE: El límite principal debe ser el presupuesto máximo de la licitación (ej. 20,000)
-  // Si por alguna razón no hay presupuesto máximo registrado, recurrimos a la suma de los productos.
-  const presupuestoMaximo = Number(licitacion.licitacion_presupuesto_maximo) || 0;
   
-  const productos = licitacion.productos || [];
-  const costoTotalProductos = productos.reduce((acc, p) => {
-    const cantidad = p.licitacion_producto_cantidad || p.cantidad || 0;
-    const precio = p.licitacion_producto_precio_unitario || p.precio_unitario || 0;
-    return acc + (cantidad * precio);
-  }, 0);
+  // Si la licitación ya está cobrada/ganada o el total pagado cubre el presupuesto, el saldo pendiente es 0
+  const estaPagadaTotalmente = licitacion.licitacion_estado === 'ganada' || totalPagado >= presupuestoTotal;
+  const saldoPendiente = estaPagadaTotalmente ? 0 : Math.max(0, presupuestoTotal - totalPagado);
 
-  // La base de cálculo ahora prioriza de forma estricta el presupuesto máximo de la licitación
-  const baseCalculo = presupuestoMaximo > 0 ? presupuestoMaximo : costoTotalProductos;
-  const saldoPendiente = Math.max(0, baseCalculo - totalPagado);
-
-  const estadosBloqueadosParaPagos = ["perdida", "finalizada", "cancelada"];
-  const puedeRealizarPago = !readOnly && !estadosBloqueadosParaPagos.includes(licitacion.licitacion_estado);
-
-  const obtenerEstadoFinanciero = () => {
-    if (totalPagado >= baseCalculo && baseCalculo > 0) {
-      return { texto: 'Pagada / Cobrada', clase: 'bg-emerald-100 text-emerald-800' };
-    }
-    if (totalPagado > 0) {
-      return { texto: 'Pago Parcial', clase: 'bg-blue-100 text-blue-800' };
-    }
-    return { texto: 'Pendiente de Pago', clase: 'bg-amber-100 text-amber-800' };
-  };
-
-  const estadoFinanciero = obtenerEstadoFinanciero();
+  const estadosBloqueadosParaPagos = ["perdida", "finalizada", "cancelada", "ganada"];
+  const puedeRealizarPago = !readOnly && !estadosBloqueadosParaPagos.includes(licitacion.licitacion_estado) && saldoPendiente > 0;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -77,7 +56,7 @@ const SeccionPagosModal = ({ licitacion, onPagoExitoso, readOnly = false }) => {
         mensajeError = detalle;
       } else if (Array.isArray(detalle)) {
         mensajeError = detalle.map(d => `${d.loc.join('.')}: ${d.msg}`).join(' | ');
-      } else if (typeof detalle === 'object' && detalle !== null) {
+      } else {
         mensajeError = JSON.stringify(detalle);
       }
 
@@ -94,23 +73,26 @@ const SeccionPagosModal = ({ licitacion, onPagoExitoso, readOnly = false }) => {
           <DollarSign className="w-5 h-5 text-indigo-600" />
           Control Financiero y Pagos
         </h3>
-        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${estadoFinanciero.clase}`}>
-          {estadoFinanciero.texto}
+        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+          estaPagadaTotalmente ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+        }`}>
+          {estaPagadaTotalmente ? 'Pagada / Cobrada' : 'Pendiente de Pago'}
         </span>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 bg-gray-50 p-4 rounded-md">
         <div>
-          <p className="text-sm text-gray-500">Presupuesto Total / Contrato</p>
-          <p className="text-xl font-bold text-gray-800">${baseCalculo.toFixed(2)}</p>
+          <p className="text-sm text-gray-500">Presupuesto Total</p>
+          <p className="text-xl font-bold text-gray-800">${presupuestoTotal.toFixed(2)}</p>
         </div>
         <div>
-          <p className="text-sm text-gray-500">Saldo Pendiente por Abonar</p>
+          <p className="text-sm text-gray-500">Saldo Pendiente (Restante)</p>
           <p className="text-xl font-bold text-indigo-600">${saldoPendiente.toFixed(2)}</p>
         </div>
       </div>
 
-      {puedeRealizarPago && saldoPendiente > 0 ? (
+      {/* Botón condicional: si ya está pagada o no se puede pagar, se deshabilita */}
+      {puedeRealizarPago ? (
         <button
           onClick={() => setModalAbierto(true)}
           className="inline-flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-indigo-700 transition"
@@ -119,20 +101,12 @@ const SeccionPagosModal = ({ licitacion, onPagoExitoso, readOnly = false }) => {
           Registrar Nuevo Pago (Abono)
         </button>
       ) : (
-        <div className={`p-3 rounded-lg text-sm flex items-center gap-2 ${
-          !puedeRealizarPago && !readOnly
-            ? "bg-amber-50 border border-amber-200 text-amber-800" 
-            : readOnly && saldoPendiente > 0
-            ? "bg-gray-50 border border-gray-200 text-gray-700"
-            : "bg-emerald-50 border border-emerald-100 text-emerald-800"
-        }`}>
+        <div className="p-3 rounded-lg text-sm flex items-center gap-2 bg-emerald-50 border border-emerald-100 text-emerald-800">
           <AlertCircle className="w-4 h-4 shrink-0" />
           <span>
-            {readOnly 
-              ? "El registro de pagos está deshabilitado en modo de solo lectura."
-              : !puedeRealizarPago 
-              ? `No se pueden registrar pagos porque la licitación se encuentra en estado "${licitacion.licitacion_estado}".`
-              : "Esta licitación ha sido pagada en su totalidad."}
+            {estaPagadaTotalmente 
+              ? "Esta licitación ya se encuentra pagada en su totalidad ($0.00 restante)." 
+              : `El registro de pagos no está disponible para el estado "${licitacion.licitacion_estado}".`}
           </span>
         </div>
       )}
@@ -145,7 +119,7 @@ const SeccionPagosModal = ({ licitacion, onPagoExitoso, readOnly = false }) => {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Monto del Abono (Saldo pendiente: ${saldoPendiente.toFixed(2)})
+                  Monto del Abono (Restante: ${saldoPendiente.toFixed(2)})
                 </label>
                 <input
                   type="number"
