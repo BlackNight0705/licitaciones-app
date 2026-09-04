@@ -7,7 +7,7 @@ import ProductoList from "../components/productos/ProductoList.jsx";
 import UploadDocumento from "../components/documentos/UploadDocumento.jsx";
 import HistorialList from "../components/historial/HistorialList.jsx";
 import SeccionPagosModal from "../components/pago/PagoForm.jsx";
-import { getLicitacion, getHistorial, actualizarLicitacion } from "../api/licitaciones.js";
+import { getLicitacion, getHistorial, actualizarLicitacion,eliminarLicitacion } from "../api/licitaciones.js";
 
 export default function LicitacionDetailPage() {
   const { id } = useParams();
@@ -105,28 +105,17 @@ export default function LicitacionDetailPage() {
     }
   };
 
-  const handleEliminarLicitacion = async () => {
-    setIsSaving(true);
-    try {
-      const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:8000/licitaciones/${id}`, {
-        method: "DELETE",
-        headers: {
-          "Authorization": `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error("No se pudo eliminar la licitación.");
-      }
-
-      navigate("/");
-    } catch (err) {
-      mostrarAlerta(err.message || "Error al eliminar la licitación.", "error");
-      setIsSaving(false);
-      setIsConfirmingEliminar(false);
-    }
-  };
+const handleEliminarLicitacion = async () => {
+  setIsSaving(true);
+  try {
+    await eliminarLicitacion(id);
+    navigate("/");
+  } catch (err) {
+    mostrarAlerta(err.response?.data?.detail || "Error al eliminar la licitación.", "error");
+    setIsSaving(false);
+    setIsConfirmingEliminar(false);
+  }
+};
 
   if (isLoading) {
     return (

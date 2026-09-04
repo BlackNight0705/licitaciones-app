@@ -19,6 +19,9 @@ export const cambiarEstadoLicitacion = (id, nuevoEstado) =>
     .post(`/licitaciones/${id}/estado/${encodeURIComponent(nuevoEstado)}`)
     .then((r) => r.data);
 
+export const eliminarLicitacion = (id) =>
+  axiosClient.delete(`/licitaciones/${id}`).then((r) => r.data);
+
 // --- Productos ---
 
 export const agregarProducto = (licitacionId, producto) =>
@@ -46,7 +49,6 @@ export const subirArchivo = (file, onUploadProgress) => {
 
 export const vincularDocumento = (licitacionId, file, onUploadProgress) => {
   const formData = new FormData();
-  // Debe llamarse "archivo" para hacer match exacto con el parámetro UploadFile en tu FastAPI
   formData.append("archivo", file);
   
   return axiosClient
