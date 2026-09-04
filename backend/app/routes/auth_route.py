@@ -34,7 +34,7 @@ async def login(
         key="access_token",
         value=access_token,
         httponly=True,
-        secure=False,      # False para pruebas locales en HTTP, True en producción con HTTPS
+        secure=True,       # False para pruebas locales en HTTP, True en producción con HTTPS
         samesite="lax",
         max_age=1800       # Tiempo de expiración en segundos (30 min)
     )
