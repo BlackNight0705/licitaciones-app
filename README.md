@@ -110,3 +110,16 @@ npm run dev
 ```
 *Nota: tener Node.js ya instalado para ejecutar el Front*
 
+
+#Usuario de Prueba(Admin)
+*Nota: notese que el admin tiene funciones, distintas a las de un user normal, puede crear un usuario y un cliente con correo valido con servivio
+resend y este podra servir de prueba para el correo, si no, puede probar laas otras funcionalidades*
+
+```
+Admin:admin_prb@correonoutil.com
+Contraseña: Admonpsw___001
+```
+
+#Evidencias
+Se adjuntaron algunas evidencias de uso dentro del sitio y algunos de sus servivios
+```![Texto alternativo de la imagen](./img/banner.png)```
