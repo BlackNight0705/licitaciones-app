@@ -54,32 +54,21 @@ export default function DashboardPage() {
         );
 
   // Función para manejar la eliminación de una licitación desde el dashboard
-  const handleEliminar = async (licId, titulo) => {
-    if (!window.confirm(`¿Estás seguro de que deseas eliminar la licitación "${titulo}"? Se borrarán también sus productos, pagos e historial.`)) {
-      return;
-    }
+const handleEliminar = async (licId, titulo) => {
+  if (!window.confirm(`¿Estás seguro de que deseas eliminar la licitación "${titulo}"? Se borrarán también sus productos, pagos e historial.`)) {
+    return;
+  }
 
-    try {
-      // Si tienes un archivo api/licitaciones.js, puedes usar algo como: await deleteLicitacion(licId);
-      // O directamente con fetch usando tu token:
-      const token = localStorage.getItem("token"); // O como manejes tu token de sesión
-      const response = await fetch(`http://localhost:8000/licitaciones/${licId}`, {
-        method: "DELETE",
-        headers: {
-          "Authorization": `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error("No se pudo eliminar la licitación.");
-      }
-
-      // Actualizamos el estado local quitando la licitación borrada para que desaparezca de la tabla al instante
-      setLicitaciones((prev) => prev.filter((lic) => (lic.id ?? lic.licitacion_id) !== licId));
-    } catch (err) {
-      alert(err.message || "Ocurrió un error al intentar eliminar la licitación.");
-    }
-  };
+  try {
+    await eliminarLicitacion(licId); // Usando la función de tu api/licitaciones.js
+    
+    // Aquí actualiza tu estado o recarga la lista para que desaparezca la licitación eliminada
+    mostrarAlerta("Licitación eliminada con éxito");
+    loadLicitaciones(); // o la función que uses para refrescar la tabla
+  } catch (err) {
+    mostrarAlerta(err.response?.data?.detail || "No se pudo eliminar la licitación.", "error");
+  }
+};
 
   // Verificamos si es administrador
   const esAdmin = usuarioActual?.rol === "admin" || usuarioActual?.usuario_rol === "admin";
