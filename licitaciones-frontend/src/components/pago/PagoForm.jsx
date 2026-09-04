@@ -11,14 +11,24 @@ const SeccionPagosModal = ({ licitacion, onPagoExitoso, readOnly = false }) => {
 
   const pagosRegistrados = licitacion.pagos || [];
   const totalPagado = pagosRegistrados.reduce((acc, p) => acc + p.pago_monto, 0);
-  const presupuestoMaximo = licitacion.licitacion_presupuesto_maximo || 0;
-  const saldoPendiente = presupuestoMaximo - totalPagado;
+
+  // Cálculo del costo total basándose en los productos de la licitación
+  const productos = licitacion.productos || [];
+  const costoTotalProductos = productos.reduce((acc, p) => {
+    const cantidad = p.licitacion_producto_cantidad || p.cantidad || 0;
+    const precio = p.licitacion_producto_precio_unitario || p.precio_unitario || 0;
+    return acc + (cantidad * precio);
+  }, 0);
+
+  // Si no hay productos registrados o suman 0, se puede respaldar con el presupuesto máximo opcionalmente
+  const baseCalculo = costoTotalProductos > 0 ? costoTotalProductos : (licitacion.licitacion_presupuesto_maximo || 0);
+  const saldoPendiente = Math.max(0, baseCalculo - totalPagado);
 
   const estadosBloqueadosParaPagos = ["perdida", "finalizada", "cancelada"];
   const puedeRealizarPago = !readOnly && !estadosBloqueadosParaPagos.includes(licitacion.licitacion_estado);
 
   const obtenerEstadoFinanciero = () => {
-    if (totalPagado >= presupuestoMaximo && presupuestoMaximo > 0) {
+    if (totalPagado >= baseCalculo && baseCalculo > 0) {
       return { texto: 'Pagada / Cobrada', clase: 'bg-emerald-100 text-emerald-800' };
     }
     if (totalPagado > 0) {
@@ -88,8 +98,8 @@ const SeccionPagosModal = ({ licitacion, onPagoExitoso, readOnly = false }) => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 bg-gray-50 p-4 rounded-md">
         <div>
-          <p className="text-sm text-gray-500">Presupuesto Máximo</p>
-          <p className="text-xl font-bold text-gray-800">${presupuestoMaximo.toFixed(2)}</p>
+          <p className="text-sm text-gray-500">Costo Total Productos</p>
+          <p className="text-xl font-bold text-gray-800">${baseCalculo.toFixed(2)}</p>
         </div>
         <div>
           <p className="text-sm text-gray-500">Saldo Pendiente</p>
