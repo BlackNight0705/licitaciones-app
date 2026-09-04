@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, Loader2, AlertCircle, Calendar, Building2, Save, Edit2 } from "lucide-react";
+import { ArrowLeft, Loader2, AlertCircle, Calendar, Building2, Save, Edit2, Trophy, XCircle } from "lucide-react";
 import Badge from "../components/ui/Badge.jsx";
 import ProductoForm from "../components/productos/ProductoForm.jsx";
 import ProductoList from "../components/productos/ProductoList.jsx";
 import UploadDocumento from "../components/documentos/UploadDocumento.jsx";
 import HistorialList from "../components/historial/HistorialList.jsx";
+import SeccionPagosModal from "../components/pagos/SeccionPagosModal.jsx";
 import { getLicitacion, getHistorial, actualizarLicitacion } from "../api/licitaciones.js";
 
 export default function LicitacionDetailPage() {
@@ -16,19 +17,14 @@ export default function LicitacionDetailPage() {
   const [error, setError] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   
-  // Estado para controlar si se ha pulsado el botón de editar en licitaciones activas
   const [isEditingActive, setIsEditingActive] = useState(false);
-
-  // Estado para las notificaciones flotantes generales
   const [mensajeNotificacion, setMensajeNotificacion] = useState(null);
-
-  // Estado para confirmar el cambio de documento de forma limpia
   const [isConfirmingDoc, setIsConfirmingDoc] = useState(false);
-
-  // Estado para confirmar de forma bonita si se marca como perdida
+  
+  // Estados de confirmación para ganar o perder
   const [isConfirmingPerdida, setIsConfirmingPerdida] = useState(false);
+  const [isConfirmingGanada, setIsConfirmingGanada] = useState(false);
 
-  // Estado local para los campos editables del formulario
   const [formData, setFormData] = useState({
     licitacion_titulo: "",
     licitacion_descripcion: "",
@@ -37,7 +33,6 @@ export default function LicitacionDetailPage() {
     licitacion_cliente_id: "",
   });
 
-  // Función auxiliar para mostrar la alerta flotante bonita
   const mostrarAlerta = (texto, tipo = "success") => {
     setMensajeNotificacion({ texto, tipo });
     setTimeout(() => {
@@ -94,6 +89,7 @@ export default function LicitacionDetailPage() {
 
       const mensajes = {
         activa: "¡Licitación activada con éxito!",
+        ganada: "¡Felicitaciones! Licitación marcada como ganada.",
         perdida: "Licitación marcada como perdida.",
         default: "Cambios guardados correctamente."
       };
@@ -128,18 +124,34 @@ export default function LicitacionDetailPage() {
   const formatCurrency = (value) =>
     value == null
       ? "—"
-      : new Intl.NumberFormat("es-ES", { style: "currency", currency: "USD" }).format(
-          value
-        );
+      : new Intl.NumberFormat("es-ES", { style: "currency", currency: "USD" }).format(value);
 
   const esBorrador = licitacion.licitacion_estado === "borrador";
   const esActiva = licitacion.licitacion_estado === "activa";
   const mostrarFormularioEdicion = esBorrador || (esActiva && isEditingActive);
 
+  // Lógica para determinar el estado financiero actual y renderizar su respectivo badge
+  const renderBadgeFinanciero = () => {
+    if (licitacion.licitacion_estado !== "ganada" && licitacion.licitacion_estado !== "adjudicada") {
+      return null;
+    }
+
+    const pagos = licitacion.pagos || [];
+    const totalPagado = pagos.reduce((acc, p) => acc + p.pago_monto, 0);
+    const presupuesto = licitacion.licitacion_presupuesto_maximo || 0;
+
+    if (totalPagado >= presupuesto && presupuesto > 0) {
+      return <Badge estado="pagada" />;
+    } else if (totalPagado > 0) {
+      return <Badge estado="pago_parcial" />;
+    } else {
+      return <Badge estado="pendiente_pago" />;
+    }
+  };
+
   return (
     <div className="space-y-6 relative">
 
-      {/* Banner de notificación flotante general */}
       {mensajeNotificacion && (
         <div className={`p-4 rounded-lg shadow-md text-sm flex items-center justify-between transition-all ${
           mensajeNotificacion.tipo === "error" 
@@ -147,22 +159,13 @@ export default function LicitacionDetailPage() {
             : "bg-emerald-50 text-emerald-800 border border-emerald-200"
         }`}>
           <span>{mensajeNotificacion.texto}</span>
-          <button 
-            onClick={() => setMensajeNotificacion(null)}
-            className="font-bold ml-4 text-lg leading-none"
-          >
-            &times;
-          </button>
+          <button onClick={() => setMensajeNotificacion(null)} className="font-bold ml-4 text-lg leading-none">&times;</button>
         </div>
       )}
 
       <div className="flex items-center justify-between">
-        <Link
-          to="/"
-          className="inline-flex items-center gap-1.5 text-sm font-medium text-ink-500 hover:text-brand-700"
-        >
-          <ArrowLeft size={16} />
-          Volver al listado
+        <Link to="/" className="inline-flex items-center gap-1.5 text-sm font-medium text-ink-500 hover:text-brand-700">
+          <ArrowLeft size={16} /> Volver al listado
         </Link>
 
         {esActiva && !isEditingActive && (
@@ -183,7 +186,11 @@ export default function LicitacionDetailPage() {
               <h2 className="font-display text-xl font-semibold text-ink-900">
                 {licitacion.licitacion_titulo}
               </h2>
-              <Badge estado={licitacion.licitacion_estado} />
+              {/* Contenedor de Badges (Estado de Licitación + Estado de Pago) */}
+              <div className="flex items-center gap-2">
+                <Badge estado={licitacion.licitacion_estado} />
+                {renderBadgeFinanciero()}
+              </div>
             </div>
 
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-ink-500">
@@ -194,8 +201,7 @@ export default function LicitacionDetailPage() {
               {licitacion.licitacion_fecha_limite && (
                 <span className="flex items-center gap-1.5">
                   <Calendar size={15} />
-                  Cierra el{" "}
-                  {new Date(licitacion.licitacion_fecha_limite).toLocaleDateString("es-ES")}
+                  Cierra el {new Date(licitacion.licitacion_fecha_limite).toLocaleDateString("es-ES")}
                 </span>
               )}
             </div>
@@ -209,10 +215,7 @@ export default function LicitacionDetailPage() {
                   {esActiva && (
                     <button
                       type="button"
-                      onClick={() => {
-                        setIsEditingActive(false);
-                        loadData();
-                      }}
+                      onClick={() => { setIsEditingActive(false); loadData(); }}
                       className="text-xs text-ink-400 hover:text-ink-700 underline"
                     >
                       Cancelar
@@ -258,7 +261,7 @@ export default function LicitacionDetailPage() {
                   </div>
                 </div>
 
-                <div className="flex flex-wrap gap-2 pt-2">
+                <div className="flex flex-wrap gap-2 pt-2 items-center">
                   <button
                     type="button"
                     disabled={isSaving}
@@ -280,7 +283,47 @@ export default function LicitacionDetailPage() {
                   )}
 
                   {esActiva && (
-                    <div className="space-y-2">
+                    <div className="flex flex-wrap gap-2 items-center w-full mt-2 pt-2 border-t border-gray-100">
+                      <span className="text-xs font-medium text-ink-500 w-full mb-1">Actualizar resultado de adjudicación:</span>
+                      
+                      {/* Botón Ganada */}
+                      {!isConfirmingGanada ? (
+                        <button
+                          type="button"
+                          disabled={isSaving}
+                          onClick={() => setIsConfirmingGanada(true)}
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-3 py-2 rounded text-xs flex items-center gap-1.5 transition-colors"
+                        >
+                          <Trophy size={14} /> Marcar como Ganada
+                        </button>
+                      ) : (
+                        <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-xs space-y-2 w-full">
+                          <p className="text-emerald-800 font-medium">¿Confirmar que esta licitación fue GANADA?</p>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              disabled={isSaving}
+                              onClick={async () => {
+                                await handleGuardarCambios("ganada");
+                                setIsConfirmingGanada(false);
+                              }}
+                              className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-3 py-1.5 rounded transition-colors"
+                            >
+                              Sí, marcar como ganada
+                            </button>
+                            <button
+                              type="button"
+                              disabled={isSaving}
+                              onClick={() => setIsConfirmingGanada(false)}
+                              className="bg-white border border-gray-300 text-ink-700 hover:bg-gray-50 font-medium px-3 py-1.5 rounded"
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Botón Perdida */}
                       {!isConfirmingPerdida ? (
                         <button
                           type="button"
@@ -288,13 +331,11 @@ export default function LicitacionDetailPage() {
                           onClick={() => setIsConfirmingPerdida(true)}
                           className="bg-rose-600 hover:bg-rose-700 text-white font-medium px-3 py-2 rounded text-xs flex items-center gap-1.5 transition-colors"
                         >
-                          Marcar como Perdida
+                          <XCircle size={14} /> Marcar como Perdida
                         </button>
                       ) : (
-                        <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg text-xs space-y-2">
-                          <p className="text-rose-800 font-medium">
-                            ¿Estás seguro de marcar esta licitación como perdida?
-                          </p>
+                        <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg text-xs space-y-2 w-full">
+                          <p className="text-rose-800 font-medium">¿Estás seguro de marcar esta licitación como perdida?</p>
                           <div className="flex items-center gap-2">
                             <button
                               type="button"
@@ -311,7 +352,7 @@ export default function LicitacionDetailPage() {
                               type="button"
                               disabled={isSaving}
                               onClick={() => setIsConfirmingPerdida(false)}
-                              className="bg-white border border-gray-300 text-ink-700 hover:bg-gray-50 font-medium px-3 py-1.5 rounded transition-colors"
+                              className="bg-white border border-gray-300 text-ink-700 hover:bg-gray-50 font-medium px-3 py-1.5 rounded"
                             >
                               Cancelar
                             </button>
@@ -334,11 +375,12 @@ export default function LicitacionDetailPage() {
         </div>
       </div>
 
+      {/* Sección de Gestión Financiera y Pagos Integrada */}
+      <SeccionPagosModal licitacion={licitacion} onPagoExitoso={loadData} />
+
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="card p-6">
-          <h3 className="mb-4 font-display text-base font-semibold text-ink-900">
-            Productos
-          </h3>
+          <h3 className="mb-4 font-display text-base font-semibold text-ink-900">Productos</h3>
           {mostrarFormularioEdicion && (
             <ProductoForm
               licitacionId={id}
@@ -365,46 +407,28 @@ export default function LicitacionDetailPage() {
         </div>
 
         <div className="card p-6">
-          <h3 className="mb-4 font-display text-base font-semibold text-ink-900">
-            Documentos
-          </h3>
-
+          <h3 className="mb-4 font-display text-base font-semibold text-ink-900">Documentos</h3>
           {licitacion.licitacion_documento_url && 
            licitacion.licitacion_documento_url !== "null" && 
            licitacion.licitacion_documento_url.trim() !== "" ? (
             <div className="space-y-3">
               <div className="flex items-center justify-between text-xs font-medium text-emerald-600 bg-emerald-50 p-3 rounded-lg border border-emerald-100">
-                <span className="flex items-center gap-1.5">
-                  ✓ Documento de propuesta cargado correctamente
-                </span>
+                <span className="flex items-center gap-1.5">✓ Documento de propuesta cargado correctamente</span>
                 <div className="flex items-center gap-3">
-                  <a 
-                    href={licitacion.licitacion_documento_url} 
-                    target="_blank" 
-                    rel="noreferrer"
-                    className="underline hover:text-emerald-700 font-semibold"
-                  >
+                  <a href={licitacion.licitacion_documento_url} target="_blank" rel="noreferrer" className="underline hover:text-emerald-700 font-semibold">
                     Ver actual
                   </a>
-                  
                   {mostrarFormularioEdicion && !isConfirmingDoc && (
-                    <button
-                      type="button"
-                      onClick={() => setIsConfirmingDoc(true)}
-                      className="text-rose-600 hover:text-rose-800 font-semibold underline"
-                    >
+                    <button type="button" onClick={() => setIsConfirmingDoc(true)} className="text-rose-600 hover:text-rose-800 font-semibold underline">
                       Cambiar
                     </button>
                   )}
                 </div>
               </div>
 
-              {/* Cuadro de confirmación integrado */}
               {isConfirmingDoc && (
                 <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs space-y-2">
-                  <p className="text-amber-800 font-medium">
-                    ¿Deseas quitar este documento para subir otro?
-                  </p>
+                  <p className="text-amber-800 font-medium">¿Deseas quitar este documento para subir otro?</p>
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
@@ -413,15 +437,11 @@ export default function LicitacionDetailPage() {
                         setLicitacion((prev) => ({ ...prev, licitacion_documento_url: null }));
                         mostrarAlerta("Puedes subir un nuevo documento.", "success");
                       }}
-                      className="bg-amber-600 hover:bg-amber-700 text-white font-medium px-3 py-1.5 rounded transition-colors"
+                      className="bg-amber-600 hover:bg-amber-700 text-white font-medium px-3 py-1.5 rounded"
                     >
                       Sí, cambiar
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => setIsConfirmingDoc(false)}
-                      className="bg-white border border-gray-300 text-ink-700 hover:bg-gray-50 font-medium px-3 py-1.5 rounded transition-colors"
-                    >
+                    <button type="button" onClick={() => setIsConfirmingDoc(false)} className="bg-white border border-gray-300 text-ink-700 px-3 py-1.5 rounded">
                       Cancelar
                     </button>
                   </div>
@@ -435,9 +455,7 @@ export default function LicitacionDetailPage() {
       </div>
 
       <div className="card p-6">
-        <h3 className="mb-2 font-display text-base font-semibold text-ink-900">
-          Historial de cambios
-        </h3>
+        <h3 className="mb-2 font-display text-base font-semibold text-ink-900">Historial de cambios</h3>
         <HistorialList historial={historial} />
       </div>
     </div>
