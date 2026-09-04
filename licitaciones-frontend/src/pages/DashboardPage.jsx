@@ -5,7 +5,7 @@ import Badge from "../components/ui/Badge.jsx";
 import LicitacionForm from "../components/licitaciones/LicitacionForm.jsx";
 import UsuarioForm from "../components/usuario/UsuarioForm.jsx";
 import ClienteForm from "../components/cliente/ClienteForm.jsx";
-import { getLicitaciones } from "../api/licitaciones.js";
+import { getLicitaciones, eliminarLicitacion } from "../api/licitaciones.js";
 // Asegúrate de importar tu función para eliminar si la tienes en la API, o haz el fetch directamente:
 // import { getLicitaciones, deleteLicitacion } from "../api/licitaciones.js";
 
@@ -55,20 +55,19 @@ export default function DashboardPage() {
 
   // Función para manejar la eliminación de una licitación desde el dashboard
 const handleEliminar = async (licId, titulo) => {
-  if (!window.confirm(`¿Estás seguro de que deseas eliminar la licitación "${titulo}"? Se borrarán también sus productos, pagos e historial.`)) {
-    return;
-  }
+    if (!window.confirm(`¿Estás seguro de que deseas eliminar la licitación "${titulo}"? Se borrarán también sus productos y su historial.`)) {
+      return;
+    }
 
-  try {
-    await eliminarLicitacion(licId); // Usando la función de tu api/licitaciones.js
-    
-    // Aquí actualiza tu estado o recarga la lista para que desaparezca la licitación eliminada
-    mostrarAlerta("Licitación eliminada con éxito");
-    loadLicitaciones(); // o la función que uses para refrescar la tabla
-  } catch (err) {
-    mostrarAlerta(err.response?.data?.detail || "No se pudo eliminar la licitación.", "error");
-  }
-};
+    try {
+      await eliminarLicitacion(licId);
+      
+      // Recargamos la lista para que desaparezca de la tabla de inmediato
+      loadLicitaciones(); 
+    } catch (err) {
+      alert(err.response?.data?.detail || "No se pudo eliminar la licitación.");
+    }
+  };
 
   // Verificamos si es administrador
   const esAdmin = usuarioActual?.rol === "admin" || usuarioActual?.usuario_rol === "admin";
