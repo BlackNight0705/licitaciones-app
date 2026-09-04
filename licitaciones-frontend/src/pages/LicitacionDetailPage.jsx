@@ -6,7 +6,7 @@ import ProductoForm from "../components/productos/ProductoForm.jsx";
 import ProductoList from "../components/productos/ProductoList.jsx";
 import UploadDocumento from "../components/documentos/UploadDocumento.jsx";
 import HistorialList from "../components/historial/HistorialList.jsx";
-import SeccionPagosModal from "../components/pagos/SeccionPagosModal.jsx";
+import SeccionPagosModal from "../components/pago/PagoForm.jsx";
 import { getLicitacion, getHistorial, actualizarLicitacion } from "../api/licitaciones.js";
 
 export default function LicitacionDetailPage() {
