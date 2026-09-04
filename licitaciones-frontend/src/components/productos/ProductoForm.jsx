@@ -2,10 +2,14 @@ import { useState } from "react";
 import { Loader2, Plus } from "lucide-react";
 import { agregarProducto } from "../../api/licitaciones.js";
 
-export default function ProductoForm({ licitacionId, onAdded }) {
+export default function ProductoForm({ licitacionId, onAdded, readOnly = false }) {
   const [form, setForm] = useState({ nombre: "", cantidad: "", precio_unitario: "" });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
+
+  if (readOnly) {
+    return null;
+  }
 
   const handleChange = (field) => (e) =>
     setForm((prev) => ({ ...prev, [field]: e.target.value }));
