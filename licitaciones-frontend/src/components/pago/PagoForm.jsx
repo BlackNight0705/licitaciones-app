@@ -14,11 +14,9 @@ const SeccionPagosModal = ({ licitacion, onPagoExitoso }) => {
   const presupuestoMaximo = licitacion.licitacion_presupuesto_maximo || 0;
   const saldoPendiente = presupuestoMaximo - totalPagado;
 
-  // Estados que prohíben totalmente los pagos (si se perdió o canceló)
   const estadosBloqueadosParaPagos = ["perdida", "finalizada", "cancelada"];
   const puedeRealizarPago = !estadosBloqueadosParaPagos.includes(licitacion.licitacion_estado);
 
-  // Determinamos el texto y color del badge financiero dinámicamente
   const obtenerEstadoFinanciero = () => {
     if (totalPagado >= presupuestoMaximo && presupuestoMaximo > 0) {
       return { texto: 'Pagada / Cobrada', clase: 'bg-emerald-100 text-emerald-800' };
@@ -58,7 +56,18 @@ const SeccionPagosModal = ({ licitacion, onPagoExitoso }) => {
       setModalAbierto(false);
       if (onPagoExitoso) onPagoExitoso();
     } catch (err) {
-      setError(err.response?.data?.detail || 'Error al procesar el pago.');
+      const detalle = err.response?.data?.detail;
+      let mensajeError = 'Error al procesar el pago.';
+
+      if (typeof detalle === 'string') {
+        mensajeError = detalle;
+      } else if (Array.isArray(detalle)) {
+        mensajeError = detalle.map(d => `${d.loc.join('.')}: ${d.msg}`).join(' | ');
+      } else if (typeof detalle === 'object' && detalle !== null) {
+        mensajeError = JSON.stringify(detalle);
+      }
+
+      setError(mensajeError);
     } finally {
       setCargando(false);
     }
@@ -87,7 +96,6 @@ const SeccionPagosModal = ({ licitacion, onPagoExitoso }) => {
         </div>
       </div>
 
-      {/* Si el estado general lo permite y aún hay saldo por cobrar */}
       {puedeRealizarPago && saldoPendiente > 0 ? (
         <button
           onClick={() => setModalAbierto(true)}
@@ -111,7 +119,6 @@ const SeccionPagosModal = ({ licitacion, onPagoExitoso }) => {
         </div>
       )}
 
-      {/* Modal de Registro de Pago */}
       {modalAbierto && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 relative">
@@ -147,8 +154,8 @@ const SeccionPagosModal = ({ licitacion, onPagoExitoso }) => {
 
               {error && (
                 <div className="p-3 bg-red-50 text-red-700 text-sm rounded-md flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4" />
-                  {error}
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>{error}</span>
                 </div>
               )}
 
