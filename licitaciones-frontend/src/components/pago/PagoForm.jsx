@@ -9,20 +9,31 @@ const SeccionPagosModal = ({ licitacion, onPagoExitoso, readOnly = false }) => {
   const [error, setError] = useState('');
   const [cargando, setCargando] = useState(false);
 
-  // Verificamos si la licitación ya está cobrada, ganada o pagada en su estado general
-  const estadoActual = (licitacion.licitacion_estado || '').toLowerCase();
-  const estaCobradaGeneral = ["cobrada", "ganada", "adjudicada"].includes(estadoActual);
+  if (!licitacion) return null;
 
-  const presupuestoTotal = Number(licitacion.licitacion_presupuesto_maximo) || 0;
-  const pagosRegistrados = licitacion.pagos || [];
-  const totalPagado = pagosRegistrados.reduce((acc, p) => acc + (Number(p.pago_monto) || 0), 0);
+  // 1. Detectar si está cobrada revisando múltiples campos posibles de tu API/BD
+  const estadoTexto = String(licitacion.licitacion_estado || licitacion.estado || '').toLowerCase();
+  const esCobradaBoolean = Boolean(licitacion.cobrada || licitacion.is_cobrada || licitacion.pagada);
   
-  // Si ya está marcada como cobrada arriba, forzamos que el saldo pendiente sea 0 automáticamente
-  const saldoPendiente = estaCobradaGeneral ? 0 : Math.max(0, presupuestoTotal - totalPagado);
+  const estaCobradaGeneral = 
+    esCobradaBoolean || 
+    estadoTexto.includes('cobrad') || 
+    estadoTexto.includes('ganad') || 
+    estadoTexto.includes('adjudicada');
+
+  const presupuestoTotal = Number(licitacion.licitacion_presupuesto_maximo || licitacion.presupuesto_maximo || licitacion.presupuesto) || 0;
+  const pagosRegistrados = licitacion.pagos || [];
+  const totalPagado = pagosRegistrados.reduce((acc, p) => acc + (Number(p.pago_monto || p.monto) || 0), 0);
+  
+  // 2. Si está cobrada por bandera o el total pagado cubre el presupuesto, el saldo restante es 0
+  const saldoPendiente = (estaCobradaGeneral || (presupuestoTotal > 0 && totalPagado >= presupuestoTotal)) 
+    ? 0 
+    : Math.max(0, presupuestoTotal - totalPagado);
+
   const estaPagadaTotalmente = saldoPendiente === 0 || estaCobradaGeneral;
 
-  const estadosBloqueadosParaPagos = ["perdida", "finalizada", "cancelada", "cobrada", "ganada", "adjudicada"];
-  const puedeRealizarPago = !readOnly && !estadosBloqueadosParaPagos.includes(estadoActual) && saldoPendiente > 0;
+  const estadosBloqueados = ["perdida", "finalizada", "cancelada", "cobrada", "ganada", "adjudicada"];
+  const puedeRealizarPago = !readOnly && !estadosBloqueados.includes(estadoTexto) && saldoPendiente > 0 && !estaCobradaGeneral;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -108,7 +119,7 @@ const SeccionPagosModal = ({ licitacion, onPagoExitoso, readOnly = false }) => {
           <span>
             {estaPagadaTotalmente 
               ? "Esta licitación ya se encuentra cobrada y saldada ($0.00 restante)." 
-              : `El registro de pagos no está disponible para el estado "${licitacion.licitacion_estado}".`}
+              : `El registro de pagos no está disponible para este estado.`}
           </span>
         </div>
       )}
