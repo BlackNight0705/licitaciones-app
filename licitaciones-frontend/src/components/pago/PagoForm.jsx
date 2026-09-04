@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { DollarSign, AlertCircle, CreditCard, CheckCircle2 } from 'lucide-react';
+import { DollarSign, AlertCircle, CreditCard } from 'lucide-react';
 import api from '../../api/axiosClient'; 
 
 const SeccionPagosModal = ({ licitacion, onPagoExitoso, readOnly = false }) => {
@@ -10,9 +10,12 @@ const SeccionPagosModal = ({ licitacion, onPagoExitoso, readOnly = false }) => {
   const [cargando, setCargando] = useState(false);
 
   const pagosRegistrados = licitacion.pagos || [];
-  const totalPagado = pagosRegistrados.reduce((acc, p) => acc + p.pago_monto, 0);
+  const totalPagado = pagosRegistrados.reduce((acc, p) => acc + (Number(p.pago_monto) || 0), 0);
 
-  // Cálculo del costo total basándose en los productos de la licitación
+  // CORRECCIÓN CLAVE: El límite principal debe ser el presupuesto máximo de la licitación (ej. 20,000)
+  // Si por alguna razón no hay presupuesto máximo registrado, recurrimos a la suma de los productos.
+  const presupuestoMaximo = Number(licitacion.licitacion_presupuesto_maximo) || 0;
+  
   const productos = licitacion.productos || [];
   const costoTotalProductos = productos.reduce((acc, p) => {
     const cantidad = p.licitacion_producto_cantidad || p.cantidad || 0;
@@ -20,8 +23,8 @@ const SeccionPagosModal = ({ licitacion, onPagoExitoso, readOnly = false }) => {
     return acc + (cantidad * precio);
   }, 0);
 
-  // Si no hay productos registrados o suman 0, se puede respaldar con el presupuesto máximo opcionalmente
-  const baseCalculo = costoTotalProductos > 0 ? costoTotalProductos : (licitacion.licitacion_presupuesto_maximo || 0);
+  // La base de cálculo ahora prioriza de forma estricta el presupuesto máximo de la licitación
+  const baseCalculo = presupuestoMaximo > 0 ? presupuestoMaximo : costoTotalProductos;
   const saldoPendiente = Math.max(0, baseCalculo - totalPagado);
 
   const estadosBloqueadosParaPagos = ["perdida", "finalizada", "cancelada"];
@@ -98,11 +101,11 @@ const SeccionPagosModal = ({ licitacion, onPagoExitoso, readOnly = false }) => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 bg-gray-50 p-4 rounded-md">
         <div>
-          <p className="text-sm text-gray-500">Costo Total Productos</p>
+          <p className="text-sm text-gray-500">Presupuesto Total / Contrato</p>
           <p className="text-xl font-bold text-gray-800">${baseCalculo.toFixed(2)}</p>
         </div>
         <div>
-          <p className="text-sm text-gray-500">Saldo Pendiente</p>
+          <p className="text-sm text-gray-500">Saldo Pendiente por Abonar</p>
           <p className="text-xl font-bold text-indigo-600">${saldoPendiente.toFixed(2)}</p>
         </div>
       </div>
@@ -113,7 +116,7 @@ const SeccionPagosModal = ({ licitacion, onPagoExitoso, readOnly = false }) => {
           className="inline-flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-indigo-700 transition"
         >
           <CreditCard className="w-4 h-4" />
-          Registrar Nuevo Pago
+          Registrar Nuevo Pago (Abono)
         </button>
       ) : (
         <div className={`p-3 rounded-lg text-sm flex items-center gap-2 ${
@@ -137,14 +140,17 @@ const SeccionPagosModal = ({ licitacion, onPagoExitoso, readOnly = false }) => {
       {modalAbierto && !readOnly && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 relative">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Registrar Pago</h3>
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Registrar Abono Parcial</h3>
             
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Monto del Pago</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Monto del Abono (Saldo pendiente: ${saldoPendiente.toFixed(2)})
+                </label>
                 <input
                   type="number"
                   step="0.01"
+                  max={saldoPendiente}
                   value={monto}
                   onChange={(e) => setMonto(e.target.value)}
                   placeholder="0.00"
@@ -187,7 +193,7 @@ const SeccionPagosModal = ({ licitacion, onPagoExitoso, readOnly = false }) => {
                   disabled={cargando}
                   className="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
                 >
-                  {cargando ? 'Guardando...' : 'Confirmar Pago'}
+                  {cargando ? 'Guardando...' : 'Confirmar Abono'}
                 </button>
               </div>
             </form>
