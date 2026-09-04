@@ -7,6 +7,7 @@ from backend.app.routes.pago_route import router as pago_router
 from backend.app.routes.usuario_route import router as user_router
 from backend.app.routes.cliente_route import router as cliente_route
 from backend.app.routes.auth_route import router as auth_router
+from backend.app.core.config import settings
 
 from backend.app.utils.cron_jobs import cron_procesar_licitaciones
 
@@ -33,8 +34,7 @@ app = FastAPI(
 
 # Configuración de CORS para permitir conexiones desde el frontend (Vite)
 origins = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
+    settings.URL_Online,
 ]
 
 app.add_middleware(

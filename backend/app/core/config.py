@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     STORAGE_URL: str | None = None
     STORAGE_KEY: str | None = None
 
+    # URL para web (frontend) - para CORS
+    URL_Online: str | None = None
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
