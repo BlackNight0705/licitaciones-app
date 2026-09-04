@@ -158,11 +158,29 @@ async def actualizar_licitacion_route(
     return await actualizar_licitacion(session, licitacion_id, data, usuario_actual.usuario_id)
 
 #Eliminar licitación (con validación de usuario)
-@router.delete("/{licitacion_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{licitacion_id}", status_code=status.HTTP_200_OK)
 async def eliminar_licitacion_route(
-    licitacion_id: int,
-    session: AsyncSession = Depends(get_session),
+    licitacion_id: int, 
+    session: AsyncSession = Depends(get_session), 
     usuario_actual: Usuario = Depends(obtener_usuario_actual)
 ):
-    await eliminar_licitacion(session, licitacion_id, usuario_actual.usuario_id)
-    return None
+    # 1. Buscar la licitación asegurando que pertenezca al usuario actual
+    result = await session.execute(
+        select(Licitacion).where(
+            Licitacion.licitacion_id == licitacion_id,
+            Licitacion.licitacion_usuario_id == usuario_actual.usuario_id
+        )
+    )
+    licitacion = result.scalars().first()
+    
+    if not licitacion:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="La licitación no existe o no tienes permisos para eliminarla."
+        )
+    
+    # 2. Eliminar de la base de datos de forma asíncrona
+    await session.delete(licitacion)
+    await session.commit()
+    
+    return {"message": "Licitación eliminada con éxito"}
