@@ -192,8 +192,11 @@ async def cambiar_estado_licitacion(session: AsyncSession, licitacion_id: int, n
 
 # Funcion para agregar un producto a la licitacion (restringiendo al propietario y solo en borrador)
 async def agregar_producto_licitacion(session: AsyncSession, licitacion_id: int, data, usuario_current) -> LicitacionProducto:
+    # Cargamos la licitación junto con sus productos actuales para poder sumarizar
     licitacion_res = await session.execute(
-        select(Licitacion).where(
+        select(Licitacion)
+        .options(selectinload(Licitacion.productos))
+        .where(
             Licitacion.licitacion_id == licitacion_id,
             Licitacion.licitacion_usuario_id == usuario_current.usuario_id
         )
@@ -207,6 +210,20 @@ async def agregar_producto_licitacion(session: AsyncSession, licitacion_id: int,
         raise HTTPException(
             status_code=400,
             detail=f"No se pueden agregar productos a una licitación en estado '{licitacion.licitacion_estado}'."
+        )
+
+    # REGLA DE PRESUPUESTO: Calcular el costo actual + el nuevo producto
+    costo_actual_productos = sum(
+        (p.licitacion_producto_cantidad * p.licitacion_producto_precio_unitario) 
+        for p in licitacion.productos
+    )
+    costo_nuevo_producto = data.cantidad * data.precio_unitario
+    costo_total_proyectado = costo_actual_productos + costo_nuevo_producto
+
+    if licitacion.licitacion_presupuesto_maximo is not None and costo_total_proyectado > licitacion.licitacion_presupuesto_maximo:
+        raise HTTPException(
+            status_code=400,
+            detail=f"El costo total proyectado ({costo_total_proyectado}) supera el presupuesto máximo permitido ({licitacion.licitacion_presupuesto_maximo})."
         )
 
     stmt = select(Producto).where(Producto.producto_nombre == data.nombre)

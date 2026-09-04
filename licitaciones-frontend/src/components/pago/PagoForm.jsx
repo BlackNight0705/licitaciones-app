@@ -44,12 +44,16 @@ const SeccionPagosModal = ({ licitacion, onPagoExitoso, readOnly = false }) => {
   // 4. Condición limpia y directa para el botón de pago
   const puedeRealizarPago = !readOnly && !estadoBloqueado && saldoPendiente > 0;
 
+  // NUEVO: Validar si el monto proyectado supera el presupuesto total permitido
+  const montoNum = parseFloat(monto) || 0;
+  const totalProyectadoPagos = totalPagado + montoNum;
+  const superaPresupuesto = presupuestoTotal > 0 && totalProyectadoPagos > presupuestoTotal;
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (readOnly) return;
     setError('');
 
-    const montoNum = parseFloat(monto);
     if (!montoNum || montoNum <= 0) {
       setError('Ingresa un monto válido.');
       return;
@@ -57,6 +61,12 @@ const SeccionPagosModal = ({ licitacion, onPagoExitoso, readOnly = false }) => {
 
     if (montoNum > saldoPendiente) {
       setError(`El pago no puede superar el saldo pendiente ($${saldoPendiente.toFixed(2)}).`);
+      return;
+    }
+
+    // BLOQUEO ESTRICTO: Evitar enviar si supera el presupuesto máximo
+    if (superaPresupuesto) {
+      setError(`El abono excede el presupuesto máximo permitido ($${presupuestoTotal.toFixed(2)}).`);
       return;
     }
 
@@ -169,6 +179,14 @@ const SeccionPagosModal = ({ licitacion, onPagoExitoso, readOnly = false }) => {
                 </select>
               </div>
 
+              {/* Alerta visual en tiempo real si el monto ingresado supera el presupuesto */}
+              {superaPresupuesto && (
+                <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-md flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>¡Atención! Este abono excede el presupuesto máximo (${presupuestoTotal.toFixed(2)}).</span>
+                </div>
+              )}
+
               {error && (
                 <div className="p-3 bg-red-50 text-red-700 text-sm rounded-md flex items-center gap-2">
                   <AlertCircle className="w-4 h-4 shrink-0" />
@@ -186,8 +204,8 @@ const SeccionPagosModal = ({ licitacion, onPagoExitoso, readOnly = false }) => {
                 </button>
                 <button
                   type="submit"
-                  disabled={cargando}
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
+                  disabled={cargando || superaPresupuesto}
+                  className="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {cargando ? 'Guardando...' : 'Confirmar Abono'}
                 </button>
