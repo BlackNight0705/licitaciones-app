@@ -1,11 +1,10 @@
 from sqlalchemy import Column, Integer, String
-from sqlalchemy.orm import declarative_base
+from backend.app.core.database import Base
 from .auditoria import AuditMixin
-
-Base = declarative_base()
 
 class Cliente(Base, AuditMixin):
     __tablename__ = "cliente"
+    __table_args__ = {"schema": "public"}
 
     cliente_id = Column(Integer, primary_key=True, index=True)
     cliente_nombre = Column(String, nullable=False)

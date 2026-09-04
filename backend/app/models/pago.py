@@ -1,11 +1,10 @@
 from sqlalchemy import Column, Integer, Float, Date, ForeignKey, String
-from sqlalchemy.orm import declarative_base
 from .auditoria import AuditMixin
-
-Base = declarative_base()
+from backend.app.core.database import Base
 
 class Pago(Base, AuditMixin):
     __tablename__ = "pago"
+    __table_args__ = {"schema": "public"}
 
     pago_id = Column(Integer, primary_key=True, index=True)
     pago_licitacion_id = Column(Integer, ForeignKey("licitacion.licitacion_id"), nullable=False)

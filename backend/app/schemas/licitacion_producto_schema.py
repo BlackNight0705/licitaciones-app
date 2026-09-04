@@ -1,15 +1,21 @@
-from pydantic import BaseModel
+from typing import Optional
+from pydantic import BaseModel, Field
+
+from backend.app.schemas.producto_schema import ProductoResponse
 
 class LicitacionProductoBase(BaseModel):
-    licitacion_producto_cantidad: int
-    licitacion_producto_precio_unitario: float
+    cantidad: int
+    precio_unitario: float
 
 class LicitacionProductoCreate(LicitacionProductoBase):
-    licitacion_producto_licitacion_id: int
-    licitacion_producto_producto_id: int
+    nombre: str
 
-class LicitacionProductoResponse(LicitacionProductoBase):
-    licitacion_producto_id: int
+class LicitacionProductoResponse(BaseModel):
+    id: int = Field(..., alias="licitacion_producto_id")
+    cantidad: int = Field(..., alias="licitacion_producto_cantidad")
+    precio_unitario: float = Field(..., alias="licitacion_producto_precio_unitario")
+    producto: Optional[ProductoResponse] = None
 
     class Config:
+        populate_by_name = True
         from_attributes = True

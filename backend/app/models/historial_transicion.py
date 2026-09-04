@@ -1,11 +1,10 @@
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
 from datetime import datetime
-from sqlalchemy.orm import declarative_base
-
-Base = declarative_base()
+from backend.app.core.database import Base
 
 class HistorialTransicion(Base):
     __tablename__ = "historial_transicion"
+    __table_args__ = {"schema": "public"}
 
     historial_transicion_id = Column(Integer, primary_key=True, index=True)
     historial_transicion_licitacion_id = Column(Integer, ForeignKey("licitacion.licitacion_id"), nullable=False)

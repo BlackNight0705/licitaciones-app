@@ -1,11 +1,10 @@
 from sqlalchemy import Column, Integer, String
-from sqlalchemy.orm import declarative_base
 from .auditoria import AuditMixin
-
-Base = declarative_base()
+from backend.app.core.database import Base
 
 class Usuario(Base, AuditMixin):
     __tablename__ = "usuario"
+    __table_args__ = {"schema": "public"}
 
     usuario_id = Column(Integer, primary_key=True, index=True)
     usuario_nombre = Column(String, nullable=False)

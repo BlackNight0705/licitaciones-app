@@ -1,67 +1,149 @@
-#Este archivo define las rutas relacionadas con las licitaciones en la aplicación FastAPI. Incluye rutas para crear licitaciones, subir documentos, cambiar el estado y aprobar licitaciones.
-from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
+# routes/licitacion_route.py
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
-from backend.app.core.database import get_session
+from sqlalchemy import select
+from typing import List
+from sqlalchemy.orm import selectinload
 
-from backend.app.schemas.licitacion_schema import LicitacionCreate, LicitacionResponse
-from backend.app.services.licitacion_service import (
-    crear_licitacion,
-    cambiar_estado,
-    aprobar_licitacion
+from backend.app.core.database import get_session
+from backend.app.core.security import obtener_usuario_actual
+from backend.app.models.licitacion import Licitacion
+from backend.app.models.usuario import Usuario
+from backend.app.schemas.licitacion_schema import (
+    LicitacionCreate,
+    LicitacionResponse,
+    LicitacionDetailResponse,
+    LicitacionUpdate
 )
-# Importamos tu servicio de subida a Supabase
+from backend.app.schemas.licitacion_producto_schema import (
+    LicitacionProductoCreate,
+    LicitacionProductoResponse
+)
+from backend.app.schemas.historial_transicion_schema import HistorialTransicionResponse
+from backend.app.models.historial_transicion import HistorialTransicion
+from backend.app.services.licitacion_service import (
+    actualizar_licitacion,
+    crear_licitacion,
+    cambiar_estado_licitacion,
+    agregar_producto_licitacion,
+    quitar_producto_licitacion,
+    subir_documento_licitacion,
+    obtener_licitacion_detalle
+)
 from backend.app.services.upload_service import subir_archivo_general
 
 router = APIRouter(prefix="/licitaciones", tags=["Licitaciones"])
 
-# Crear licitación
-@router.post("/", response_model=LicitacionResponse)
+#Ruta para crear una licitación
+@router.post("/", response_model=LicitacionResponse, status_code=status.HTTP_201_CREATED)
 async def crear_licitacion_route(
     data: LicitacionCreate,
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    usuario_actual: Usuario = Depends(obtener_usuario_actual)
 ):
-    return await crear_licitacion(session, data)
+    # Pasamos el ID del usuario autenticado para satisfacer la llave foránea obligatoria
+    return await crear_licitacion(session, data, usuario_actual.usuario_id)
 
-# Subir documento a licitación (Integrado con Supabase Storage)
+#Listado de licitaciones
+@router.get("/", response_model=List[LicitacionResponse])
+async def listar_licitaciones_route(
+    skip: int = 0,
+    limit: int = 100,
+    session: AsyncSession = Depends(get_session),
+    usuario_actual: Usuario = Depends(obtener_usuario_actual)
+):
+    result = await session.execute(
+        select(Licitacion)
+        .options(selectinload(Licitacion.cliente))  
+        .offset(skip)
+        .limit(limit)
+    )
+    return result.scalars().all()
+
+#Ruta para obtener el detalle de una licitación
+@router.get("/{licitacion_id}", response_model=LicitacionDetailResponse)
+async def obtener_detalle_licitacion_route(
+    licitacion_id: int,
+    session: AsyncSession = Depends(get_session),
+    usuario_actual: Usuario = Depends(obtener_usuario_actual)
+):
+    return await obtener_licitacion_detalle(session, licitacion_id)
+
+@router.post("/{licitacion_id}/estado/{nuevo_estado}", response_model=LicitacionResponse)
+async def cambiar_estado_route(
+    licitacion_id: int,
+    nuevo_estado: str,
+    session: AsyncSession = Depends(get_session),
+    usuario_actual: Usuario = Depends(obtener_usuario_actual)
+):
+    return await cambiar_estado_licitacion(session, licitacion_id, nuevo_estado, usuario_actual.usuario_id)
+
+#Rutas para agregar y quitar productos de una licitación
+@router.post("/{licitacion_id}/productos", response_model=LicitacionProductoResponse)
+async def agregar_producto_route(
+    licitacion_id: int, 
+    data: LicitacionProductoCreate, 
+    session: AsyncSession = Depends(get_session),
+    usuario_actual = Depends(obtener_usuario_actual)  # <--- Inyecta el usuario actual aquí
+):
+    return await agregar_producto_licitacion(session, licitacion_id, data, usuario_actual)
+
+@router.delete("/{licitacion_id}/productos/{licitacion_producto_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def quitar_producto_route(
+    licitacion_id: int,
+    licitacion_producto_id: int,
+    session: AsyncSession = Depends(get_session),
+    usuario_actual: Usuario = Depends(obtener_usuario_actual)
+):
+    await quitar_producto_licitacion(session, licitacion_id, licitacion_producto_id)
+    return None
+
+#Rutas para subir documentos y obtener historial de transiciones
 @router.post("/{licitacion_id}/documento")
 async def subir_documento_route(
     licitacion_id: int,
     archivo: UploadFile = File(...),
-    usuario_id: str = "872a6662-6afb-4fee-bd01-b3fba3e0f4d0", # Idealmente esto viene de tu auth/token actual
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    usuario_actual: Usuario = Depends(obtener_usuario_actual)
 ):
-    try:
-        contenido = await archivo.read()
-        
-        # 1. Sube el archivo a Supabase bajo la ruta Licitaciones/{usuario_id}/archivo.pdf
-        url_publica = await subir_archivo_general(contenido, archivo.filename, usuario_id)
-        
-        # 2. Aquí puedes opcionalmente guardar el link (`url_publica`) en tu base de datos 
-        # asociado a la licitación y al usuario usando la sesión (`session`).
-        
-        return {
-            "mensaje": "Archivo subido exitosamente a Supabase",
-            "url": url_publica,
-            "licitacion_id": licitacion_id
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    contenido = await archivo.read()
+    
+    # Asegúrate de pasarle exactamente estos argumentos:
+    licitacion = await subir_documento_licitacion(
+        session=session, 
+        licitacion_id=licitacion_id, 
+        contenido=contenido, 
+        filename=archivo.filename, 
+        usuario_id=str(usuario_actual.usuario_id)
+    )
+    
+    return {
+        "mensaje": "Documento subido y asociado correctamente",
+        "url": licitacion.licitacion_documento_url
+    }
 
-# Cambiar estado de licitación
-@router.post("/{licitacion_id}/estado/{nuevo_estado}")
-async def cambiar_estado_route(
+@router.get("/{licitacion_id}/historial", response_model=List[HistorialTransicionResponse])
+async def obtener_historial_licitacion_route(
     licitacion_id: int,
-    nuevo_estado: str,
-    usuario_id: int,
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    usuario_actual: Usuario = Depends(obtener_usuario_actual)
 ):
-    return await cambiar_estado(session, licitacion_id, nuevo_estado, usuario_id)
+    licitacion = await session.get(Licitacion, licitacion_id)
+    if not licitacion:
+        raise HTTPException(status_code=404, detail="Licitación no encontrada")
 
-# Aprobar licitacion
-@router.post("/{licitacion_id}/aprobar")
-async def aprobar_licitacion_route(
+    result = await session.execute(
+        select(HistorialTransicion)
+        .where(HistorialTransicion.historial_transicion_licitacion_id == licitacion_id)
+        .order_by(HistorialTransicion.historial_transicion_fecha_transicion.asc())
+    )
+    return result.scalars().all()
+
+@router.put("/{licitacion_id}", response_model=LicitacionResponse)
+async def actualizar_licitacion_route(
     licitacion_id: int,
-    usuario_admin_id: int,
-    session: AsyncSession = Depends(get_session)
+    data: LicitacionUpdate,
+    session: AsyncSession = Depends(get_session),
+    usuario_actual: Usuario = Depends(obtener_usuario_actual)
 ):
-    return await aprobar_licitacion(session, licitacion_id, usuario_admin_id)
+    return await actualizar_licitacion(session, licitacion_id, data, usuario_actual.usuario_id)

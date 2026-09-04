@@ -1,11 +1,10 @@
 from sqlalchemy import Column, Integer, String, Float
-from sqlalchemy.orm import declarative_base
 from .auditoria import AuditMixin
-
-Base = declarative_base()
+from backend.app.core.database import Base
 
 class Producto(Base, AuditMixin):
     __tablename__ = "producto"
+    __table_args__ = {"schema": "public"}
 
     producto_id = Column(Integer, primary_key=True, index=True)
     producto_nombre = Column(String, nullable=False)

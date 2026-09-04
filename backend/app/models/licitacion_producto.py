@@ -1,11 +1,12 @@
 from sqlalchemy import Column, Integer, Float, ForeignKey
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import relationship
 from .auditoria import AuditMixin
-
-Base = declarative_base()
+from backend.app.core.database import Base
+from backend.app.models.producto import Producto  # <--- Importa la clase Producto aquí
 
 class LicitacionProducto(Base, AuditMixin):
     __tablename__ = "licitacion_producto"
+    __table_args__ = {"schema": "public"}
 
     licitacion_producto_id = Column(Integer, primary_key=True, index=True)
 
@@ -14,3 +15,6 @@ class LicitacionProducto(Base, AuditMixin):
 
     licitacion_producto_cantidad = Column(Integer, nullable=False)
     licitacion_producto_precio_unitario = Column(Float, nullable=False)
+
+    # Relación directa usando la clase importada para evitar errores de búsqueda por nombre
+    producto = relationship(Producto, lazy="joined")
