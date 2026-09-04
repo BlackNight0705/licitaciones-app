@@ -69,6 +69,7 @@ async def obtener_detalle_licitacion_route(
 ):
     return await obtener_licitacion_detalle(session, licitacion_id, usuario_actual.usuario_id)
 
+#cambiar estado de una licitación
 @router.post("/{licitacion_id}/estado/{nuevo_estado}", response_model=LicitacionResponse)
 async def cambiar_estado_route(
     licitacion_id: int,
@@ -88,6 +89,7 @@ async def agregar_producto_route(
 ):
     return await agregar_producto_licitacion(session, licitacion_id, data, usuario_actual)
 
+#Quitar producto de una licitación
 @router.delete("/{licitacion_id}/productos/{licitacion_producto_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def quitar_producto_route(
     licitacion_id: int,
@@ -121,6 +123,7 @@ async def subir_documento_route(
         "url": licitacion.licitacion_documento_url
     }
 
+#Obtener historial de transiciones de una licitación
 @router.get("/{licitacion_id}/historial", response_model=List[HistorialTransicionResponse])
 async def obtener_historial_licitacion_route(
     licitacion_id: int,
