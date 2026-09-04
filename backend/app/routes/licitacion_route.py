@@ -34,17 +34,16 @@ from backend.app.services.upload_service import subir_archivo_general
 
 router = APIRouter(prefix="/licitaciones", tags=["Licitaciones"])
 
-#Ruta para crear una licitación
+# Ruta para crear una licitación
 @router.post("/", response_model=LicitacionResponse, status_code=status.HTTP_201_CREATED)
 async def crear_licitacion_route(
     data: LicitacionCreate,
     session: AsyncSession = Depends(get_session),
     usuario_actual: Usuario = Depends(obtener_usuario_actual)
 ):
-    # Pasamos el ID del usuario autenticado para satisfacer la llave foránea obligatoria
     return await crear_licitacion(session, data, usuario_actual.usuario_id)
 
-#Listado de licitaciones
+# Listado de licitaciones (Filtrado por usuario actual)
 @router.get("/", response_model=List[LicitacionResponse])
 async def listar_licitaciones_route(
     skip: int = 0,
@@ -54,20 +53,21 @@ async def listar_licitaciones_route(
 ):
     result = await session.execute(
         select(Licitacion)
-        .options(selectinload(Licitacion.cliente))  
+        .options(selectinload(Licitacion.cliente))
+        .where(Licitacion.licitacion_usuario_id == usuario_actual.usuario_id) # <--- ¡Filtro clave añadido!
         .offset(skip)
         .limit(limit)
     )
     return result.scalars().all()
 
-#Ruta para obtener el detalle de una licitación
+# Ruta para obtener el detalle de una licitación (Pasando el usuario_id)
 @router.get("/{licitacion_id}", response_model=LicitacionDetailResponse)
 async def obtener_detalle_licitacion_route(
     licitacion_id: int,
     session: AsyncSession = Depends(get_session),
     usuario_actual: Usuario = Depends(obtener_usuario_actual)
 ):
-    return await obtener_licitacion_detalle(session, licitacion_id)
+    return await obtener_licitacion_detalle(session, licitacion_id, usuario_actual.usuario_id)
 
 @router.post("/{licitacion_id}/estado/{nuevo_estado}", response_model=LicitacionResponse)
 async def cambiar_estado_route(
@@ -78,13 +78,13 @@ async def cambiar_estado_route(
 ):
     return await cambiar_estado_licitacion(session, licitacion_id, nuevo_estado, usuario_actual.usuario_id)
 
-#Rutas para agregar y quitar productos de una licitación
+# Rutas para agregar y quitar productos de una licitación
 @router.post("/{licitacion_id}/productos", response_model=LicitacionProductoResponse)
 async def agregar_producto_route(
     licitacion_id: int, 
     data: LicitacionProductoCreate, 
     session: AsyncSession = Depends(get_session),
-    usuario_actual = Depends(obtener_usuario_actual)  # <--- Inyecta el usuario actual aquí
+    usuario_actual = Depends(obtener_usuario_actual)
 ):
     return await agregar_producto_licitacion(session, licitacion_id, data, usuario_actual)
 
@@ -95,10 +95,10 @@ async def quitar_producto_route(
     session: AsyncSession = Depends(get_session),
     usuario_actual: Usuario = Depends(obtener_usuario_actual)
 ):
-    await quitar_producto_licitacion(session, licitacion_id, licitacion_producto_id)
+    await quitar_producto_licitacion(session, licitacion_id, licitacion_producto_id, usuario_actual.usuario_id)
     return None
 
-#Rutas para subir documentos y obtener historial de transiciones
+# Rutas para subir documentos y obtener historial de transiciones
 @router.post("/{licitacion_id}/documento")
 async def subir_documento_route(
     licitacion_id: int,
@@ -108,7 +108,6 @@ async def subir_documento_route(
 ):
     contenido = await archivo.read()
     
-    # Asegúrate de pasarle exactamente estos argumentos:
     licitacion = await subir_documento_licitacion(
         session=session, 
         licitacion_id=licitacion_id, 
@@ -128,9 +127,15 @@ async def obtener_historial_licitacion_route(
     session: AsyncSession = Depends(get_session),
     usuario_actual: Usuario = Depends(obtener_usuario_actual)
 ):
-    licitacion = await session.get(Licitacion, licitacion_id)
-    if not licitacion:
-        raise HTTPException(status_code=404, detail="Licitación no encontrada")
+    # Validamos propiedad antes de mostrar el historial
+    result_lic = await session.execute(
+        select(Licitacion).where(
+            Licitacion.licitacion_id == licitacion_id,
+            Licitacion.licitacion_usuario_id == usuario_actual.usuario_id
+        )
+    )
+    if not result_lic.scalars().first():
+        raise HTTPException(status_code=404, detail="Licitación no encontrada o no tienes permisos")
 
     result = await session.execute(
         select(HistorialTransicion)
