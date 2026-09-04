@@ -11,25 +11,37 @@ const SeccionPagosModal = ({ licitacion, onPagoExitoso, readOnly = false }) => {
 
   if (!licitacion) return null;
 
-  // 1. Cálculos estrictamente matemáticos basados en los abonos reales
-  const presupuestoTotal = Number(licitacion.licitacion_presupuesto_maximo || licitacion.presupuesto_maximo || licitacion.presupuesto) || 0;
-  const pagosRegistrados = licitacion.pagos || [];
+  // 1. Extraer presupuesto de cualquier variante posible de la BD
+  const presupuestoTotal = Number(
+    licitacion.licitacion_presupuesto_maximo || 
+    licitacion.presupuesto_maximo || 
+    licitacion.presupuesto || 
+    0
+  );
+
+  // 2. Extraer pagos asegurando que sea un arreglo válido
+  const pagosRegistrados = Array.isArray(licitacion.pagos) ? licitacion.pagos : [];
   const totalPagado = pagosRegistrados.reduce((acc, p) => acc + (Number(p.pago_monto || p.monto) || 0), 0);
   
-  // Saldo pendiente real
+  // Saldo pendiente matemático puro
   const saldoPendiente = Math.max(0, presupuestoTotal - totalPagado);
 
-  // ¿Está pagada totalmente? Solo si el saldo restante es 0 (y hay al menos un pago o se marcó explícitamente como cobrada)
-  const estadoTexto = String(licitacion.licitacion_estado || licitacion.estado || '').toLowerCase();
-  const esCobradaExplicita = Boolean(licitacion.cobrada || licitacion.is_cobrada) || estadoTexto === 'cobrada';
-  
-  const estaPagadaTotalmente = saldoPendiente === 0 && (totalPagado > 0 || esCobradaExplicita);
+  // 3. Revisar el texto del estado de forma amplia
+  const estadoTexto = String(
+    licitacion.licitacion_estado || 
+    licitacion.estado || 
+    licitacion.status || 
+    ''
+  ).toLowerCase();
 
-  // Estados donde de verdad no se debe permitir pagar
+  const esCobradaExplicita = Boolean(licitacion.cobrada || licitacion.is_cobrada) || estadoTexto.includes('cobrad');
+  const estaPagadaTotalmente = saldoPendiente === 0 || esCobradaExplicita;
+
+  // Solo bloquear estrictamente en estados terminales negativos
   const estadosBloqueadosAbsolutos = ["perdida", "finalizada", "cancelada"];
-  const estadoBloqueado = estadosBloqueadosAbsolutos.includes(estadoTexto);
+  const estadoBloqueado = estadosBloqueadosAbsolutos.some(e => estadoTexto.includes(e));
 
-  // 2. Permitir pagar si no es readOnly, el estado no está bloqueado y aún queda saldo por pagar
+  // 4. Condición limpia y directa para el botón de pago
   const puedeRealizarPago = !readOnly && !estadoBloqueado && saldoPendiente > 0;
 
   const handleSubmit = async (e) => {
@@ -116,7 +128,7 @@ const SeccionPagosModal = ({ licitacion, onPagoExitoso, readOnly = false }) => {
           <span>
             {estaPagadaTotalmente 
               ? "Esta licitación ya se encuentra pagada en su totalidad ($0.00 restante)." 
-              : `El registro de pagos no está disponible para el estado "${licitacion.licitacion_estado}".`}
+              : `El registro de pagos no está disponible para este estado.`}
           </span>
         </div>
       )}
