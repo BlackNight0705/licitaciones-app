@@ -14,7 +14,6 @@ from backend.app.models.producto import Producto
 from backend.app.schemas.licitacion_schema import LicitacionCreate, LicitacionUpdate
 from backend.app.schemas.licitacion_producto_schema import LicitacionProductoCreate
 from backend.app.services.upload_service import subir_archivo_general
-# Importamos todos los servicios de correo necesarios
 from backend.app.services.email_service import (
     enviar_correo_activacion,
     enviar_correo_vencida
@@ -51,8 +50,6 @@ async def _disparar_correo_seguro(licitacion: Licitacion, estado_nuevo: str):
                 cliente_email=cliente_email,
                 titulo=licitacion.licitacion_titulo
             )
-        # Puedes agregar más 'elif' aquí si necesitas notificar para 'finalizada', 'por_cobrar', etc.
-            
     except Exception as e:
         print(f"Error al intentar enviar el correo de notificación: {e}")
 
@@ -78,16 +75,19 @@ async def crear_licitacion(session: AsyncSession, data: LicitacionCreate, usuari
         await session.rollback()
         raise HTTPException(status_code=400, detail=f"Error en la base de datos: {str(e)}")
 
-# Funcion para actualizar la licitacion y manejar la transición controlada
+# Funcion para actualizar la licitacion y manejar la transición controlada (con validación de propietario)
 async def actualizar_licitacion(session: AsyncSession, licitacion_id: int, data: LicitacionUpdate, usuario_id: int) -> Licitacion:
     result = await session.execute(
         select(Licitacion)
         .options(selectinload(Licitacion.productos), selectinload(Licitacion.cliente))
-        .where(Licitacion.licitacion_id == licitacion_id)
+        .where(
+            Licitacion.licitacion_id == licitacion_id,
+            Licitacion.licitacion_usuario_id == usuario_id
+        )
     )
     licitacion = result.scalars().first()
     if not licitacion:
-        raise HTTPException(status_code=404, detail="Licitación no encontrada")
+        raise HTTPException(status_code=404, detail="Licitación no encontrada o no tienes permisos")
 
     estado_anterior = licitacion.licitacion_estado
     nuevo_estado = data.licitacion_estado
@@ -133,22 +133,24 @@ async def actualizar_licitacion(session: AsyncSession, licitacion_id: int, data:
     await session.commit()
     await session.refresh(licitacion)
 
-    # Disparamos el correo de forma segura si el estado cambió realmente
     if nuevo_estado and nuevo_estado != estado_anterior:
         await _disparar_correo_seguro(licitacion, nuevo_estado)
 
     return licitacion
     
-# Funcion para cambiar el estado de la licitacion de forma directa
+# Funcion para cambiar el estado de la licitacion de forma directa (con validación de propietario)
 async def cambiar_estado_licitacion(session: AsyncSession, licitacion_id: int, nuevo_estado: str, usuario_id: int) -> Licitacion:
     result = await session.execute(
         select(Licitacion)
         .options(selectinload(Licitacion.cliente))
-        .where(Licitacion.licitacion_id == licitacion_id)
+        .where(
+            Licitacion.licitacion_id == licitacion_id,
+            Licitacion.licitacion_usuario_id == usuario_id
+        )
     )
     licitacion = result.scalars().first()
     if not licitacion:
-        raise HTTPException(status_code=404, detail="Licitación no encontrada")
+        raise HTTPException(status_code=404, detail="Licitación no encontrada o no tienes permisos")
 
     estado_actual = licitacion.licitacion_estado
 
@@ -179,16 +181,20 @@ async def cambiar_estado_licitacion(session: AsyncSession, licitacion_id: int, n
     await session.commit()
     await session.refresh(licitacion)
 
-    # Disparamos el correo de forma segura al cambiar de estado aquí también
     await _disparar_correo_seguro(licitacion, nuevo_estado)
 
     return licitacion
 
-# Funcion para agregar un producto a la licitacion
+# Funcion para agregar un producto a la licitacion (restringiendo al propietario)
 async def agregar_producto_licitacion(session: AsyncSession, licitacion_id: int, data, usuario_current) -> LicitacionProducto:
-    licitacion = await session.get(Licitacion, licitacion_id)
-    if not licitacion:
-        raise HTTPException(status_code=404, detail="Licitación no encontrada")
+    licitacion_res = await session.execute(
+        select(Licitacion).where(
+            Licitacion.licitacion_id == licitacion_id,
+            Licitacion.licitacion_usuario_id == usuario_current.usuario_id
+        )
+    )
+    if not licitacion_res.scalars().first():
+        raise HTTPException(status_code=404, detail="Licitación no encontrada o no tienes permisos")
 
     stmt = select(Producto).where(Producto.producto_nombre == data.nombre)
     result = await session.execute(stmt)
@@ -216,20 +222,35 @@ async def agregar_producto_licitacion(session: AsyncSession, licitacion_id: int,
     await session.refresh(licitacion_producto)
     return licitacion_producto
 
-# Funcion para quitar un producto de la licitacion
-async def quitar_producto_licitacion(session: AsyncSession, licitacion_id: int, licitacion_producto_id: int):
+# Funcion para quitar un producto de la licitacion (con validación de propietario)
+async def quitar_producto_licitacion(session: AsyncSession, licitacion_id: int, licitacion_producto_id: int, usuario_id: int):
     producto = await session.get(LicitacionProducto, licitacion_producto_id)
     if not producto or producto.licitacion_producto_licitacion_id != licitacion_id:
         raise HTTPException(status_code=404, detail="Producto no encontrado en esta licitación")
 
+    licitacion = await session.execute(
+        select(Licitacion).where(
+            Licitacion.licitacion_id == licitacion_id,
+            Licitacion.licitacion_usuario_id == usuario_id
+        )
+    )
+    if not licitacion.scalars().first():
+        raise HTTPException(status_code=403, detail="No tienes permisos para modificar esta licitación")
+
     await session.delete(producto)
     await session.commit()
 
-# Funcion para subir documento a la licitacion
+# Funcion para subir documento a la licitacion (restringiendo al propietario)
 async def subir_documento_licitacion(session: AsyncSession, licitacion_id: int, contenido: bytes, filename: str, usuario_id: str) -> Licitacion:
-    licitacion = await session.get(Licitacion, licitacion_id)
+    result = await session.execute(
+        select(Licitacion).where(
+            Licitacion.licitacion_id == licitacion_id,
+            Licitacion.licitacion_usuario_id == int(usuario_id)
+        )
+    )
+    licitacion = result.scalars().first()
     if not licitacion:
-        raise HTTPException(status_code=404, detail="Licitación no encontrada")
+        raise HTTPException(status_code=404, detail="Licitación no encontrada o no tienes permisos")
 
     url_real = await subir_archivo_general(contenido, filename, usuario_id)
     licitacion.licitacion_documento_url = url_real
@@ -238,8 +259,8 @@ async def subir_documento_licitacion(session: AsyncSession, licitacion_id: int, 
     await session.refresh(licitacion)
     return licitacion
 
-# Funcion para obtener el detalle de la licitacion, incluyendo cliente, productos e historial
-async def obtener_licitacion_detalle(session: AsyncSession, licitacion_id: int) -> Licitacion:
+# Funcion para obtener el detalle de la licitacion, incluyendo cliente, productos e historial (restringido al propietario)
+async def obtener_licitacion_detalle(session: AsyncSession, licitacion_id: int, usuario_id: int) -> Licitacion:
     result = await session.execute(
         select(Licitacion)
         .options(
@@ -247,9 +268,12 @@ async def obtener_licitacion_detalle(session: AsyncSession, licitacion_id: int) 
             selectinload(Licitacion.productos),
             selectinload(Licitacion.historial)
         )
-        .where(Licitacion.licitacion_id == licitacion_id)
+        .where(
+            Licitacion.licitacion_id == licitacion_id,
+            Licitacion.licitacion_usuario_id == usuario_id
+        )
     )
     licitacion = result.scalars().first()
     if not licitacion:
-        raise HTTPException(status_code=404, detail="Licitación no encontrada")
+        raise HTTPException(status_code=404, detail="Licitación no encontrada o no tienes permisos")
     return licitacion

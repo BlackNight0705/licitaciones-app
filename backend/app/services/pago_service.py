@@ -7,9 +7,16 @@ from backend.app.models.licitacion import Licitacion
 from backend.app.schemas.pago_schema import PagoCreate
 
 async def registrar_pago(session: AsyncSession, data: PagoCreate, usuario_id: int):
-    licitacion = await session.get(Licitacion, data.pago_licitacion_id)
+    # Validar que la licitación exista y pertenezca al usuario actual
+    result = await session.execute(
+        select(Licitacion).where(
+            Licitacion.licitacion_id == data.pago_licitacion_id,
+            Licitacion.licitacion_usuario_id == usuario_id
+        )
+    )
+    licitacion = result.scalars().first()
     if not licitacion:
-        raise HTTPException(status_code=404, detail="Licitación no encontrada")
+        raise HTTPException(status_code=404, detail="Licitación no encontrada o no tienes permisos")
 
     if licitacion.licitacion_estado != "por_cobrar":
         raise HTTPException(
@@ -17,10 +24,10 @@ async def registrar_pago(session: AsyncSession, data: PagoCreate, usuario_id: in
             detail="Solo se pueden registrar pagos en licitaciones con estado 'por_cobrar'."
         )
 
-    result = await session.execute(
+    result_pagos = await session.execute(
         select(Pago).where(Pago.pago_licitacion_id == licitacion.licitacion_id)
     )
-    pagos = result.scalars().all()
+    pagos = result_pagos.scalars().all()
     total_pagado = sum(p.pago_monto for p in pagos)
     saldo_pendiente = licitacion.licitacion_presupuesto_maximo - total_pagado
 
