@@ -75,7 +75,6 @@ export default function LicitacionDetailPage() {
 
   useEffect(() => {
     loadData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   const handleGuardarCambios = async (nuevoEstado = null) => {
@@ -83,7 +82,9 @@ export default function LicitacionDetailPage() {
     try {
       const payload = {
         ...formData,
-        licitacion_presupuesto_maximo: parseFloat(formData.licitacion_presupuesto_maximo),
+        licitacion_presupuesto_maximo: formData.licitacion_presupuesto_maximo !== "" 
+          ? parseFloat(formData.licitacion_presupuesto_maximo) 
+          : 0,
         ...(nuevoEstado && { licitacion_estado: nuevoEstado })
       };
 
@@ -409,7 +410,7 @@ export default function LicitacionDetailPage() {
                       type="button"
                       onClick={() => {
                         setIsConfirmingDoc(false);
-                        loadData();
+                        setLicitacion((prev) => ({ ...prev, licitacion_documento_url: null }));
                         mostrarAlerta("Puedes subir un nuevo documento.", "success");
                       }}
                       className="bg-amber-600 hover:bg-amber-700 text-white font-medium px-3 py-1.5 rounded transition-colors"

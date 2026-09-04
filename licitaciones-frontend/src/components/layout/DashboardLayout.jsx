@@ -7,7 +7,7 @@ export default function DashboardLayout({ title }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-brand-50">
+    <div className="min-h-screen bg-brand-50 flex">
       <Sidebar isOpen={sidebarOpen} onNavigate={() => setSidebarOpen(false)} />
 
       {sidebarOpen && (
@@ -18,9 +18,9 @@ export default function DashboardLayout({ title }) {
         />
       )}
 
-      <div className="lg:pl-64">
+      <div className="flex-1 flex flex-col min-w-0">
         <Navbar title={title} onMenuClick={() => setSidebarOpen(true)} />
-        <main className="p-4 lg:p-8">
+        <main className="flex-1 p-4 lg:p-8 overflow-y-auto">
           <Outlet />
         </main>
       </div>
