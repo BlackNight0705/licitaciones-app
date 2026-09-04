@@ -96,7 +96,6 @@ export default function LicitacionDetailPage() {
       mostrarAlerta(mensajes[nuevoEstado] || mensajes.default);
       loadData();
     } catch (err) {
-      // Capturamos con precisión el mensaje devuelto por el backend (ej: "No se puede activar sin productos")
       const detalleError = err.response?.data?.detail || "Error al actualizar la licitación.";
       mostrarAlerta(detalleError, "error");
     } finally {
@@ -130,7 +129,6 @@ export default function LicitacionDetailPage() {
   const esBorrador = licitacion.licitacion_estado === "borrador";
   const esActiva = licitacion.licitacion_estado === "activa";
   
-  // REGLA: Los productos solo se pueden modificar en modo borrador
   const permiteModificarProductos = esBorrador;
   const mostrarFormularioEdicion = esBorrador || (esActiva && isEditingActive);
 
@@ -154,7 +152,6 @@ export default function LicitacionDetailPage() {
 
   return (
     <div className="space-y-6 relative">
-
       {mensajeNotificacion && (
         <div className={`p-4 rounded-lg shadow-md text-sm flex items-center justify-between transition-all ${
           mensajeNotificacion.tipo === "error" 
@@ -217,7 +214,16 @@ export default function LicitacionDetailPage() {
                   {esActiva && (
                     <button
                       type="button"
-                      onClick={() => { setIsEditingActive(false); loadData(); }}
+                      onClick={() => {
+                        setIsEditingActive(false);
+                        setFormData({
+                          licitacion_titulo: licitacion.licitacion_titulo || "",
+                          licitacion_descripcion: licitacion.licitacion_descripcion || "",
+                          licitacion_presupuesto_maximo: licitacion.licitacion_presupuesto_maximo || "",
+                          licitacion_fecha_limite: licitacion.licitacion_fecha_limite ? licitacion.licitacion_fecha_limite.split("T")[0] : "",
+                          licitacion_cliente_id: licitacion.licitacion_cliente_id || "",
+                        });
+                      }}
                       className="text-xs text-ink-400 hover:text-ink-700 underline"
                     >
                       Cancelar
@@ -388,7 +394,6 @@ export default function LicitacionDetailPage() {
             )}
           </div>
 
-          {/* Formulario de productos solo visible si está en modo borrador */}
           {permiteModificarProductos && (
             <ProductoForm
               licitacionId={id}
