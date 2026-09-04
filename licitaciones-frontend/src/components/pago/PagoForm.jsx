@@ -11,25 +11,25 @@ const SeccionPagosModal = ({ licitacion, onPagoExitoso, readOnly = false }) => {
 
   if (!licitacion) return null;
 
-  // 1. Datos base
+  // 1. Cálculos estrictamente matemáticos basados en los abonos reales
   const presupuestoTotal = Number(licitacion.licitacion_presupuesto_maximo || licitacion.presupuesto_maximo || licitacion.presupuesto) || 0;
   const pagosRegistrados = licitacion.pagos || [];
   const totalPagado = pagosRegistrados.reduce((acc, p) => acc + (Number(p.pago_monto || p.monto) || 0), 0);
   
-  // 2. El saldo pendiente real basado puramente en las matemáticas (Presupuesto - Pagado)
+  // Saldo pendiente real
   const saldoPendiente = Math.max(0, presupuestoTotal - totalPagado);
 
-  // 3. Está pagada totalmente SOLO si el saldo restante es 0 o si la etiqueta superior indica explícitamente cobrada
+  // ¿Está pagada totalmente? Solo si el saldo restante es 0 (y hay al menos un pago o se marcó explícitamente como cobrada)
   const estadoTexto = String(licitacion.licitacion_estado || licitacion.estado || '').toLowerCase();
-  const esCobradaExplicita = Boolean(licitacion.cobrada || licitacion.is_cobrada) || estadoTexto.includes('cobrad');
+  const esCobradaExplicita = Boolean(licitacion.cobrada || licitacion.is_cobrada) || estadoTexto === 'cobrada';
   
-  const estaPagadaTotalmente = saldoPendiente === 0 || esCobradaExplicita;
+  const estaPagadaTotalmente = saldoPendiente === 0 && (totalPagado > 0 || esCobradaExplicita);
 
-  // 4. Estados donde de verdad no se debe permitir pagar nunca (como pérdida o cancelada)
+  // Estados donde de verdad no se debe permitir pagar
   const estadosBloqueadosAbsolutos = ["perdida", "finalizada", "cancelada"];
   const estadoBloqueado = estadosBloqueadosAbsolutos.includes(estadoTexto);
 
-  // 5. EL CAMBIO CLAVE: Permite pagar si no es solo lectura, el estado no está bloqueado y aún hay saldo pendiente por cubrir
+  // 2. Permitir pagar si no es readOnly, el estado no está bloqueado y aún queda saldo por pagar
   const puedeRealizarPago = !readOnly && !estadoBloqueado && saldoPendiente > 0;
 
   const handleSubmit = async (e) => {
@@ -102,7 +102,6 @@ const SeccionPagosModal = ({ licitacion, onPagoExitoso, readOnly = false }) => {
         </div>
       </div>
 
-      {/* Si aún hay saldo por pagar y el estado lo permite, el botón de pago estará activo */}
       {puedeRealizarPago ? (
         <button
           onClick={() => setModalAbierto(true)}
