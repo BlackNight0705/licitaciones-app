@@ -55,15 +55,13 @@ export default function DashboardPage() {
 
   // Función para manejar la eliminación de una licitación desde el dashboard
 const handleEliminar = async (licId, titulo) => {
-    if (!window.confirm(`¿Estás seguro de que deseas eliminar la licitación "${titulo}"? Se borrarán también sus productos y su historial.`)) {
+    if (!window.confirm(`¿Estás seguro de que deseas eliminar la licitación "${titulo}"? Se borrarán también sus productos, pagos e historial.`)) {
       return;
     }
 
     try {
       await eliminarLicitacion(licId);
-      
-      // Recargamos la lista para que desaparezca de la tabla de inmediato
-      loadLicitaciones(); 
+      loadLicitaciones(); // Recarga la tabla de inmediato
     } catch (err) {
       alert(err.response?.data?.detail || "No se pudo eliminar la licitación.");
     }
