@@ -21,10 +21,11 @@ from backend.app.services.email_service import (
 )
 
 TRANSICIONES_VALIDAS = {
-    "borrador": ["activa"],
-    "activa": ["finalizada", "perdida"],
-    "finalizada": ["por_cobrar"],
-    "por_cobrar": ["cobrada"],
+    "borrador": ["activa", "perdida"],
+    "activa": ["ganada", "finalizada", "perdida"],
+    "ganada": ["por_cobrar", "perdida"],
+    "finalizada": ["por_cobrar", "perdida"],
+    "por_cobrar": ["cobrada", "perdida"],
     "cobrada": [],
     "perdida": []
 }
