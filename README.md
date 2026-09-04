@@ -174,3 +174,6 @@ A continuación se muestra el funcionamiento y las principales interfaces del si
     <img src="./Evidencias/evidencia_correo2.png" width="30%"/>
     <img src="./Evidencias/Evidencia_correo3.jpeg" width="30%"/>
   </div>
+
+* **Despliegue en Render:**
+  ![Deploy en Render](./Evidencias/Deploy%20en%20render.png)
