@@ -120,6 +120,57 @@ Admin:admin_prb@correonoutil.com
 Contraseña: Admonpsw___001
 ```
 
-#Evidencias
-Se adjuntaron algunas evidencias de uso dentro del sitio y algunos de sus servivios
-```![Texto alternativo de la imagen](./img/banner.png)```
+## Evidencias y Capturas de Pantalla
+
+A continuación se muestra el funcionamiento y las principales interfaces del sistema de gestión de licitaciones:
+
+### 1. Autenticación y Acceso
+* **Inicio de sesión:**
+  ![Login](./evidencias/Evidencia_login.png)
+
+### 2. Panel Principal y Gestión General
+* **Dashboard principal:**
+  ![Dashboard](./evidencias/Dashboard.png)
+
+* **Gestión de Clientes:**
+  ![Clientes](./evidencias/Clientes.png)
+
+* **Gestión de Usuarios:**
+  ![Usuarios](./evidencias/Usuarios.png)
+
+### 3. Ciclo de Vida de las Licitaciones
+* **Creación de Borrador:**
+  ![Creacion de Borrador](./evidencias/Creacion%20de%20Borrador%20.png)
+
+* **Licitación en Borrador:**
+  ![Borrador](./evidencias/Licitacion_borrador.png)
+
+* **Licitación Activa:**
+  ![Activa](./evidencias/Licitacion%20Activa%20.png)
+
+* **Licitación Ganadora:**
+  ![Ganadora](./evidencias/Licitacion%20Ganadora.png)
+
+* **Licitación Cobrada:**
+  ![Cobrada](./evidencias/Cobrada.png)
+
+* **Licitación Perdida:**
+  ![Perdida](./evidencias/Licitacion%20perdida.png)
+
+### 4. Validaciones y Alertas del Sistema
+* **Control en pagos:**
+  ![Control en pago](./evidencias/Control%20en%20pago.png)
+
+* **Alerta por exceder presupuesto:**
+  ![Exceder presupuesto](./evidencias/Alerta%20por%20exceder%20presupuesto.png)
+
+* **Bloqueo por falta de datos:**
+  ![Bloqueo datos](./evidencias/Bloqueo%20por%20falta%20de%20datos.png)
+
+### 5. Notificaciones y Correos
+* **Evidencias de notificaciones por correo:**
+  <div style="display: flex; gap: 10px;">
+    <img src="./evidencias/Evidencia_correo.png" width="30%"/>
+    <img src="./evidencias/evidencia_correo2.png" width="30%"/>
+    <img src="./evidencias/Evidencia_correo3.jpeg" width="30%"/>
+  </div>
