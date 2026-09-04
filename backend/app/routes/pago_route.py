@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.core.database import get_session
-from app.schemas.pago_schema import PagoCreate, PagoResponse
-from app.services.pago_service import registrar_pago
+from backend.app.core.database import get_session
+from backend.app.schemas.pago_schema import PagoCreate, PagoResponse
+from backend.app.services.pago_service import registrar_pago
 # Importa tu dependencia de usuario actual (ej. get_current_user)
 # from app.core.security import get_current_user 
 

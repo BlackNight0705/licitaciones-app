@@ -2,9 +2,9 @@ from datetime import date
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from fastapi import HTTPException, status
-from app.models.pago import Pago
-from app.models.licitacion import Licitacion
-from app.schemas.pago_schema import PagoCreate
+from backend.app.models.pago import Pago
+from backend.app.models.licitacion import Licitacion
+from backend.app.schemas.pago_schema import PagoCreate
 
 async def registrar_pago(session: AsyncSession, data: PagoCreate, usuario_id: int):
     licitacion = await session.get(Licitacion, data.pago_licitacion_id)
