@@ -266,7 +266,8 @@ async def obtener_licitacion_detalle(session: AsyncSession, licitacion_id: int, 
         .options(
             selectinload(Licitacion.cliente),
             selectinload(Licitacion.productos),
-            selectinload(Licitacion.historial)
+            selectinload(Licitacion.historial),
+            selectinload(Licitacion.pagos) # <--- ¡Inclúyelo aquí también!
         )
         .where(
             Licitacion.licitacion_id == licitacion_id,

@@ -15,6 +15,7 @@ class Licitacion(Base, AuditMixin):
     cliente = relationship("Cliente", lazy="joined")
     productos = relationship("LicitacionProducto", backref="licitacion", cascade="all, delete-orphan")
     historial = relationship("HistorialTransicion", backref="licitacion", cascade="all, delete-orphan")
+    pagos = relationship("Pago", backref="licitacion", cascade="all, delete-orphan")
 
     licitacion_titulo = Column(String, nullable=False)
     licitacion_descripcion = Column(String)
