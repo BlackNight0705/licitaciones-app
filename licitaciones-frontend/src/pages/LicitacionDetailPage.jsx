@@ -21,7 +21,6 @@ export default function LicitacionDetailPage() {
   const [mensajeNotificacion, setMensajeNotificacion] = useState(null);
   const [isConfirmingDoc, setIsConfirmingDoc] = useState(false);
   
-  // Estados de confirmación para ganar o perder
   const [isConfirmingPerdida, setIsConfirmingPerdida] = useState(false);
   const [isConfirmingGanada, setIsConfirmingGanada] = useState(false);
 
@@ -97,7 +96,9 @@ export default function LicitacionDetailPage() {
       mostrarAlerta(mensajes[nuevoEstado] || mensajes.default);
       loadData();
     } catch (err) {
-      mostrarAlerta(err.response?.data?.detail || "Error al actualizar la licitación.", "error");
+      // Capturamos con precisión el mensaje devuelto por el backend (ej: "No se puede activar sin productos")
+      const detalleError = err.response?.data?.detail || "Error al actualizar la licitación.";
+      mostrarAlerta(detalleError, "error");
     } finally {
       setIsSaving(false);
     }
@@ -128,9 +129,11 @@ export default function LicitacionDetailPage() {
 
   const esBorrador = licitacion.licitacion_estado === "borrador";
   const esActiva = licitacion.licitacion_estado === "activa";
+  
+  // REGLA: Los productos solo se pueden modificar en modo borrador
+  const permiteModificarProductos = esBorrador;
   const mostrarFormularioEdicion = esBorrador || (esActiva && isEditingActive);
 
-  // Lógica para determinar el estado financiero actual y renderizar su respectivo badge
   const renderBadgeFinanciero = () => {
     if (licitacion.licitacion_estado !== "ganada" && licitacion.licitacion_estado !== "adjudicada") {
       return null;
@@ -186,7 +189,6 @@ export default function LicitacionDetailPage() {
               <h2 className="font-display text-xl font-semibold text-ink-900">
                 {licitacion.licitacion_titulo}
               </h2>
-              {/* Contenedor de Badges (Estado de Licitación + Estado de Pago) */}
               <div className="flex items-center gap-2">
                 <Badge estado={licitacion.licitacion_estado} />
                 {renderBadgeFinanciero()}
@@ -286,7 +288,6 @@ export default function LicitacionDetailPage() {
                     <div className="flex flex-wrap gap-2 items-center w-full mt-2 pt-2 border-t border-gray-100">
                       <span className="text-xs font-medium text-ink-500 w-full mb-1">Actualizar resultado de adjudicación:</span>
                       
-                      {/* Botón Ganada */}
                       {!isConfirmingGanada ? (
                         <button
                           type="button"
@@ -323,7 +324,6 @@ export default function LicitacionDetailPage() {
                         </div>
                       )}
 
-                      {/* Botón Perdida */}
                       {!isConfirmingPerdida ? (
                         <button
                           type="button"
@@ -375,13 +375,21 @@ export default function LicitacionDetailPage() {
         </div>
       </div>
 
-      {/* Sección de Gestión Financiera y Pagos Integrada */}
       <SeccionPagosModal licitacion={licitacion} onPagoExitoso={loadData} />
 
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="card p-6">
-          <h3 className="mb-4 font-display text-base font-semibold text-ink-900">Productos</h3>
-          {mostrarFormularioEdicion && (
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="font-display text-base font-semibold text-ink-900">Productos</h3>
+            {!permiteModificarProductos && (
+              <span className="text-xs text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                Solo modificable en borrador
+              </span>
+            )}
+          </div>
+
+          {/* Formulario de productos solo visible si está en modo borrador */}
+          {permiteModificarProductos && (
             <ProductoForm
               licitacionId={id}
               onAdded={(producto) =>
@@ -392,11 +400,12 @@ export default function LicitacionDetailPage() {
               }
             />
           )}
+
           <ProductoList
             licitacionId={id}
             productos={licitacion.productos}
             presupuestoMaximo={licitacion.licitacion_presupuesto_maximo}
-            readOnly={!mostrarFormularioEdicion}
+            readOnly={!permiteModificarProductos}
             onRemoved={(productoId) =>
               setLicitacion((prev) => ({
                 ...prev,
@@ -418,7 +427,7 @@ export default function LicitacionDetailPage() {
                   <a href={licitacion.licitacion_documento_url} target="_blank" rel="noreferrer" className="underline hover:text-emerald-700 font-semibold">
                     Ver actual
                   </a>
-                  {mostrarFormularioEdicion && !isConfirmingDoc && (
+                  {esBorrador && !isConfirmingDoc && (
                     <button type="button" onClick={() => setIsConfirmingDoc(true)} className="text-rose-600 hover:text-rose-800 font-semibold underline">
                       Cambiar
                     </button>
@@ -449,7 +458,7 @@ export default function LicitacionDetailPage() {
               )}
             </div>
           ) : (
-            mostrarFormularioEdicion && <UploadDocumento licitacionId={id} onUploaded={loadData} />
+            esBorrador && <UploadDocumento licitacionId={id} onUploaded={loadData} />
           )}
         </div>
       </div>

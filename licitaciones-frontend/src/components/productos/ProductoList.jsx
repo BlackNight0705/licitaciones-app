@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Trash2, Loader2, Package, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { eliminarProducto } from "../../api/licitaciones.js";
 
-export default function ProductoList({ licitacionId, productos, presupuestoMaximo, onRemoved }) {
+export default function ProductoList({ licitacionId, productos, presupuestoMaximo, onRemoved, readOnly = false }) {
   const [deletingId, setDeletingId] = useState(null);
 
   const handleDelete = async (productoId) => {
@@ -63,19 +63,21 @@ export default function ProductoList({ licitacionId, productos, presupuestoMaxim
                   <span className="font-semibold text-ink-700 ml-2">({formatCurrency(subtotalItem)})</span>
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => handleDelete(productoKey)}
-                disabled={deletingId === productoKey}
-                className="rounded-lg p-2 text-ink-400 transition-colors hover:bg-rose-50 hover:text-rose-600"
-                aria-label={`Eliminar ${nombreProducto}`}
-              >
-                {deletingId === productoKey ? (
-                  <Loader2 size={16} className="animate-spin" />
-                ) : (
-                  <Trash2 size={16} />
-                )}
-              </button>
+              {!readOnly && (
+                <button
+                  type="button"
+                  onClick={() => handleDelete(productoKey)}
+                  disabled={deletingId === productoKey}
+                  className="rounded-lg p-2 text-ink-400 transition-colors hover:bg-rose-50 hover:text-rose-600"
+                  aria-label={`Eliminar ${nombreProducto}`}
+                >
+                  {deletingId === productoKey ? (
+                    <Loader2 size={16} className="animate-spin" />
+                  ) : (
+                    <Trash2 size={16} />
+                  )}
+                </button>
+              )}
             </div>
           );
         })}

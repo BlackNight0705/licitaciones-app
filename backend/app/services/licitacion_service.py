@@ -142,7 +142,7 @@ async def actualizar_licitacion(session: AsyncSession, licitacion_id: int, data:
 async def cambiar_estado_licitacion(session: AsyncSession, licitacion_id: int, nuevo_estado: str, usuario_id: int) -> Licitacion:
     result = await session.execute(
         select(Licitacion)
-        .options(selectinload(Licitacion.cliente))
+        .options(selectinload(Licitacion.cliente), selectinload(Licitacion.productos))
         .where(
             Licitacion.licitacion_id == licitacion_id,
             Licitacion.licitacion_usuario_id == usuario_id
@@ -166,6 +166,11 @@ async def cambiar_estado_licitacion(session: AsyncSession, licitacion_id: int, n
                 status_code=400,
                 detail="No se puede activar la licitación sin un documento de propuesta adjunto."
             )
+        if not licitacion.productos or len(licitacion.productos) == 0:
+            raise HTTPException(
+                status_code=400,
+                detail="No se puede activar la licitación porque debe tener al menos un producto agregado."
+            )
 
     licitacion.licitacion_estado = nuevo_estado
 
@@ -185,7 +190,7 @@ async def cambiar_estado_licitacion(session: AsyncSession, licitacion_id: int, n
 
     return licitacion
 
-# Funcion para agregar un producto a la licitacion (restringiendo al propietario)
+# Funcion para agregar un producto a la licitacion (restringiendo al propietario y solo en borrador)
 async def agregar_producto_licitacion(session: AsyncSession, licitacion_id: int, data, usuario_current) -> LicitacionProducto:
     licitacion_res = await session.execute(
         select(Licitacion).where(
@@ -193,8 +198,16 @@ async def agregar_producto_licitacion(session: AsyncSession, licitacion_id: int,
             Licitacion.licitacion_usuario_id == usuario_current.usuario_id
         )
     )
-    if not licitacion_res.scalars().first():
+    licitacion = licitacion_res.scalars().first()
+    if not licitacion:
         raise HTTPException(status_code=404, detail="Licitación no encontrada o no tienes permisos")
+
+    # REGLA: Solo se pueden agregar productos si está en estado borrador
+    if licitacion.licitacion_estado != "borrador":
+        raise HTTPException(
+            status_code=400,
+            detail=f"No se pueden agregar productos a una licitación en estado '{licitacion.licitacion_estado}'."
+        )
 
     stmt = select(Producto).where(Producto.producto_nombre == data.nombre)
     result = await session.execute(stmt)
@@ -222,20 +235,28 @@ async def agregar_producto_licitacion(session: AsyncSession, licitacion_id: int,
     await session.refresh(licitacion_producto)
     return licitacion_producto
 
-# Funcion para quitar un producto de la licitacion (con validación de propietario)
+# Funcion para quitar un producto de la licitacion (con validación de propietario y solo en borrador)
 async def quitar_producto_licitacion(session: AsyncSession, licitacion_id: int, licitacion_producto_id: int, usuario_id: int):
     producto = await session.get(LicitacionProducto, licitacion_producto_id)
     if not producto or producto.licitacion_producto_licitacion_id != licitacion_id:
         raise HTTPException(status_code=404, detail="Producto no encontrado en esta licitación")
 
-    licitacion = await session.execute(
+    licitacion_res = await session.execute(
         select(Licitacion).where(
             Licitacion.licitacion_id == licitacion_id,
             Licitacion.licitacion_usuario_id == usuario_id
         )
     )
-    if not licitacion.scalars().first():
+    licitacion = licitacion_res.scalars().first()
+    if not licitacion:
         raise HTTPException(status_code=403, detail="No tienes permisos para modificar esta licitación")
+
+    # REGLA: Solo se pueden quitar productos si está en estado borrador
+    if licitacion.licitacion_estado != "borrador":
+        raise HTTPException(
+            status_code=400,
+            detail=f"No se pueden eliminar productos de una licitación en estado '{licitacion.licitacion_estado}'."
+        )
 
     await session.delete(producto)
     await session.commit()
@@ -267,7 +288,7 @@ async def obtener_licitacion_detalle(session: AsyncSession, licitacion_id: int, 
             selectinload(Licitacion.cliente),
             selectinload(Licitacion.productos),
             selectinload(Licitacion.historial),
-            selectinload(Licitacion.pagos) # <--- ¡Inclúyelo aquí también!
+            selectinload(Licitacion.pagos)
         )
         .where(
             Licitacion.licitacion_id == licitacion_id,

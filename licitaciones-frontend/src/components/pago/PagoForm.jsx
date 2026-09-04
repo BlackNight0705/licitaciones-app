@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { DollarSign, AlertCircle, CreditCard, CheckCircle2 } from 'lucide-react';
 import api from '../../api/axiosClient'; 
 
-const SeccionPagosModal = ({ licitacion, onPagoExitoso }) => {
+const SeccionPagosModal = ({ licitacion, onPagoExitoso, readOnly = false }) => {
   const [modalAbierto, setModalAbierto] = useState(false);
   const [monto, setMonto] = useState('');
   const [metodoPago, setMetodoPago] = useState('transferencia');
@@ -15,7 +15,7 @@ const SeccionPagosModal = ({ licitacion, onPagoExitoso }) => {
   const saldoPendiente = presupuestoMaximo - totalPagado;
 
   const estadosBloqueadosParaPagos = ["perdida", "finalizada", "cancelada"];
-  const puedeRealizarPago = !estadosBloqueadosParaPagos.includes(licitacion.licitacion_estado);
+  const puedeRealizarPago = !readOnly && !estadosBloqueadosParaPagos.includes(licitacion.licitacion_estado);
 
   const obtenerEstadoFinanciero = () => {
     if (totalPagado >= presupuestoMaximo && presupuestoMaximo > 0) {
@@ -31,6 +31,7 @@ const SeccionPagosModal = ({ licitacion, onPagoExitoso }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (readOnly) return;
     setError('');
 
     const montoNum = parseFloat(monto);
@@ -49,7 +50,7 @@ const SeccionPagosModal = ({ licitacion, onPagoExitoso }) => {
       await api.post('/pagos/', {
         pago_licitacion_id: licitacion.licitacion_id || licitacion.id,
         pago_monto: montoNum,
-        pago_metodo_pago: metodoPago // Corregido de pago_metodo a pago_metodo_pago
+        pago_metodo_pago: metodoPago
       });
 
       setMonto('');
@@ -106,20 +107,24 @@ const SeccionPagosModal = ({ licitacion, onPagoExitoso }) => {
         </button>
       ) : (
         <div className={`p-3 rounded-lg text-sm flex items-center gap-2 ${
-          !puedeRealizarPago 
+          !puedeRealizarPago && !readOnly
             ? "bg-amber-50 border border-amber-200 text-amber-800" 
+            : readOnly && saldoPendiente > 0
+            ? "bg-gray-50 border border-gray-200 text-gray-700"
             : "bg-emerald-50 border border-emerald-100 text-emerald-800"
         }`}>
           <AlertCircle className="w-4 h-4 shrink-0" />
           <span>
-            {!puedeRealizarPago 
+            {readOnly 
+              ? "El registro de pagos está deshabilitado en modo de solo lectura."
+              : !puedeRealizarPago 
               ? `No se pueden registrar pagos porque la licitación se encuentra en estado "${licitacion.licitacion_estado}".`
               : "Esta licitación ha sido pagada en su totalidad."}
           </span>
         </div>
       )}
 
-      {modalAbierto && (
+      {modalAbierto && !readOnly && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 relative">
             <h3 className="text-lg font-medium text-gray-900 mb-4">Registrar Pago</h3>

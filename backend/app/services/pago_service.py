@@ -1,15 +1,18 @@
 from datetime import date
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from fastapi import HTTPException, status
 from backend.app.models.pago import Pago
 from backend.app.models.licitacion import Licitacion
 from backend.app.schemas.pago_schema import PagoCreate
 
 async def registrar_pago(session: AsyncSession, data: PagoCreate, usuario_id: int):
-    # Validar que la licitación exista y pertenezca al usuario actual
+    # Validar que la licitación exista, pertenezca al usuario y cargar sus productos
     result = await session.execute(
-        select(Licitacion).where(
+        select(Licitacion)
+        .options(selectinload(Licitacion.productos))
+        .where(
             Licitacion.licitacion_id == data.pago_licitacion_id,
             Licitacion.licitacion_usuario_id == usuario_id
         )
@@ -18,10 +21,17 @@ async def registrar_pago(session: AsyncSession, data: PagoCreate, usuario_id: in
     if not licitacion:
         raise HTTPException(status_code=404, detail="Licitación no encontrada o no tienes permisos")
 
-    if licitacion.licitacion_estado != "por_cobrar":
+    # REGLA: No se puede pagar una licitación que no tenga productos asociados
+    if not licitacion.productos or len(licitacion.productos) == 0:
         raise HTTPException(
             status_code=400,
-            detail="Solo se pueden registrar pagos en licitaciones con estado 'por_cobrar'."
+            detail="No se pueden registrar pagos en una licitación que no tiene productos asociados."
+        )
+
+    if licitacion.licitacion_estado not in ["por_cobrar", "ganada"]:
+        raise HTTPException(
+            status_code=400,
+            detail="Solo se pueden registrar pagos en licitaciones ganadas o por cobrar."
         )
 
     result_pagos = await session.execute(
