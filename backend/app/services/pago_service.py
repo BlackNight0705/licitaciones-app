@@ -47,11 +47,12 @@ async def registrar_pago(session: AsyncSession, data: PagoCreate, usuario_id: in
             detail=f"El pago excede el saldo pendiente ({saldo_pendiente})."
         )
 
-    # Inyectamos obligatoriamente el usuario actual y la fecha de hoy, 
-    # ignorando lo que el cliente intente mandar o si venía vacío.
+    # Inyectamos obligatoriamente el usuario actual, fecha de hoy y los campos de auditoría requeridos
     pago_data = data.model_dump()
     pago_data["pago_usuario_id"] = usuario_id
     pago_data["pago_fecha_pago"] = date.today()
+    pago_data["entidad_creador_id"] = usuario_id
+    pago_data["entidad_modificador_id"] = usuario_id
 
     pago = Pago(**pago_data)
     session.add(pago)
