@@ -49,7 +49,7 @@ const SeccionPagosModal = ({ licitacion, onPagoExitoso }) => {
       await api.post('/pagos/', {
         pago_licitacion_id: licitacion.licitacion_id || licitacion.id,
         pago_monto: montoNum,
-        pago_metodo: metodoPago
+        pago_metodo_pago: metodoPago // Corregido de pago_metodo a pago_metodo_pago
       });
 
       setMonto('');
