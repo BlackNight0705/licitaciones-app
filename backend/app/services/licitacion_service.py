@@ -299,3 +299,25 @@ async def obtener_licitacion_detalle(session: AsyncSession, licitacion_id: int, 
     if not licitacion:
         raise HTTPException(status_code=404, detail="Licitación no encontrada o no tienes permisos")
     return licitacion
+
+#Eliminar una licitación (con validación de propietario)
+async def eliminar_licitacion(session, licitacion_id: int, usuario_id: int):
+    # 1. Buscar la licitación validando que pertenezca al usuario
+    query = select(Licitacion).where(
+        Licitacion.licitacion_id == licitacion_id,
+        Licitacion.licitacion_usuario_id == usuario_id
+    )
+    result = await session.execute(query)
+    licitacion = result.scalars().first()
+
+    if not licitacion:
+        raise HTTPException(
+            status_code=404, 
+            detail="Licitación no encontrada o no tienes permisos para eliminarla"
+        )
+
+    # 2. Eliminar de la base de datos
+    await session.delete(licitacion)
+    await session.commit()
+    
+    return True

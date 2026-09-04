@@ -26,6 +26,7 @@ from backend.app.services.licitacion_service import (
     crear_licitacion,
     cambiar_estado_licitacion,
     agregar_producto_licitacion,
+    eliminar_licitacion,
     quitar_producto_licitacion,
     subir_documento_licitacion,
     obtener_licitacion_detalle
@@ -155,3 +156,13 @@ async def actualizar_licitacion_route(
     usuario_actual: Usuario = Depends(obtener_usuario_actual)
 ):
     return await actualizar_licitacion(session, licitacion_id, data, usuario_actual.usuario_id)
+
+#Eliminar licitación (con validación de usuario)
+@router.delete("/{licitacion_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def eliminar_licitacion_route(
+    licitacion_id: int,
+    session: AsyncSession = Depends(get_session),
+    usuario_actual: Usuario = Depends(obtener_usuario_actual)
+):
+    await eliminar_licitacion(session, licitacion_id, usuario_actual.usuario_id)
+    return None

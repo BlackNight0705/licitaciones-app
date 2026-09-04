@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, Loader2, AlertCircle, Calendar, Building2, Save, Edit2, Trophy, XCircle } from "lucide-react";
+import { useParams, Link, useNavigate } from "react-router-dom";
+import { ArrowLeft, Loader2, AlertCircle, Calendar, Building2, Save, Edit2, Trophy, XCircle, Trash2 } from "lucide-react";
 import Badge from "../components/ui/Badge.jsx";
 import ProductoForm from "../components/productos/ProductoForm.jsx";
 import ProductoList from "../components/productos/ProductoList.jsx";
@@ -11,6 +11,7 @@ import { getLicitacion, getHistorial, actualizarLicitacion } from "../api/licita
 
 export default function LicitacionDetailPage() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [licitacion, setLicitacion] = useState(null);
   const [historial, setHistorial] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -23,6 +24,7 @@ export default function LicitacionDetailPage() {
   
   const [isConfirmingPerdida, setIsConfirmingPerdida] = useState(false);
   const [isConfirmingGanada, setIsConfirmingGanada] = useState(false);
+  const [isConfirmingEliminar, setIsConfirmingEliminar] = useState(false);
 
   const [formData, setFormData] = useState({
     licitacion_titulo: "",
@@ -103,6 +105,29 @@ export default function LicitacionDetailPage() {
     }
   };
 
+  const handleEliminarLicitacion = async () => {
+    setIsSaving(true);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`http://localhost:8000/licitaciones/${id}`, {
+        method: "DELETE",
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error("No se pudo eliminar la licitación.");
+      }
+
+      navigate("/");
+    } catch (err) {
+      mostrarAlerta(err.message || "Error al eliminar la licitación.", "error");
+      setIsSaving(false);
+      setIsConfirmingEliminar(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="card flex items-center justify-center gap-2 py-16 text-ink-500">
@@ -168,16 +193,56 @@ export default function LicitacionDetailPage() {
           <ArrowLeft size={16} /> Volver al listado
         </Link>
 
-        {esActiva && !isEditingActive && (
+        <div className="flex items-center gap-3">
+          {esActiva && !isEditingActive && (
+            <button
+              type="button"
+              onClick={() => setIsEditingActive(true)}
+              className="btn-secondary flex items-center gap-1.5 text-xs py-1.5 px-3"
+            >
+              <Edit2 size={14} /> Editar licitación
+            </button>
+          )}
+
           <button
             type="button"
-            onClick={() => setIsEditingActive(true)}
-            className="btn-secondary flex items-center gap-1.5 text-xs py-1.5 px-3"
+            onClick={() => setIsConfirmingEliminar(true)}
+            className="bg-rose-600 hover:bg-rose-700 text-white font-medium flex items-center gap-1.5 text-xs py-1.5 px-3 rounded transition-colors"
           >
-            <Edit2 size={14} /> Editar licitación
+            <Trash2 size={14} /> Eliminar licitación
           </button>
-        )}
+        </div>
       </div>
+
+      {isConfirmingEliminar && (
+        <div className="card p-5 bg-rose-50 border border-rose-200 space-y-3">
+          <div className="flex items-center gap-2 text-rose-800 font-semibold text-sm">
+            <AlertCircle size={18} />
+            ¿Estás completamente seguro de eliminar esta licitación?
+          </div>
+          <p className="text-xs text-rose-700">
+            Esta acción borrará por completo la licitación, sus productos vinculados, el historial de cambios y los pagos registrados. No se puede deshacer.
+          </p>
+          <div className="flex items-center gap-3 pt-1">
+            <button
+              type="button"
+              disabled={isSaving}
+              onClick={handleEliminarLicitacion}
+              className="bg-rose-600 hover:bg-rose-700 text-white font-medium px-4 py-2 rounded text-xs transition-colors"
+            >
+              {isSaving ? "Eliminando..." : "Sí, eliminar permanentemente"}
+            </button>
+            <button
+              type="button"
+              disabled={isSaving}
+              onClick={() => setIsConfirmingEliminar(false)}
+              className="bg-white border border-gray-300 text-ink-700 hover:bg-gray-50 font-medium px-4 py-2 rounded text-xs"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="card p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">

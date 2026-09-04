@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Plus, Loader2, AlertCircle, Inbox, ChevronRight, UserPlus, Building2 } from "lucide-react";
+import { Plus, Loader2, AlertCircle, Inbox, ChevronRight, UserPlus, Building2, Trash2 } from "lucide-react";
 import Badge from "../components/ui/Badge.jsx";
 import LicitacionForm from "../components/licitaciones/LicitacionForm.jsx";
 import UsuarioForm from "../components/usuario/UsuarioForm.jsx";
 import ClienteForm from "../components/cliente/ClienteForm.jsx";
 import { getLicitaciones } from "../api/licitaciones.js";
+// Asegúrate de importar tu función para eliminar si la tienes en la API, o haz el fetch directamente:
+// import { getLicitaciones, deleteLicitacion } from "../api/licitaciones.js";
 
 export default function DashboardPage() {
   const [licitaciones, setLicitaciones] = useState([]);
@@ -15,7 +17,7 @@ export default function DashboardPage() {
   const [isUserFormOpen, setIsUserFormOpen] = useState(false);
   const [isClienteFormOpen, setIsClienteFormOpen] = useState(false);
   
-  // Estado para el usuario actual (puedes adaptarlo según cómo guardes la sesión: localStorage, Context, etc.)
+  // Estado para el usuario actual
   const [usuarioActual, setUsuarioActual] = useState(null);
 
   const loadLicitaciones = async () => {
@@ -36,7 +38,6 @@ export default function DashboardPage() {
   useEffect(() => {
     loadLicitaciones();
     
-    // Leemos el rol y el email directamente de cómo los guarda tu AuthContext
     const rolGuardado = localStorage.getItem("usuario_rol");
     const emailGuardado = localStorage.getItem("usuario_email");
     
@@ -52,6 +53,34 @@ export default function DashboardPage() {
           value
         );
 
+  // Función para manejar la eliminación de una licitación desde el dashboard
+  const handleEliminar = async (licId, titulo) => {
+    if (!window.confirm(`¿Estás seguro de que deseas eliminar la licitación "${titulo}"? Se borrarán también sus productos, pagos e historial.`)) {
+      return;
+    }
+
+    try {
+      // Si tienes un archivo api/licitaciones.js, puedes usar algo como: await deleteLicitacion(licId);
+      // O directamente con fetch usando tu token:
+      const token = localStorage.getItem("token"); // O como manejes tu token de sesión
+      const response = await fetch(`http://localhost:8000/licitaciones/${licId}`, {
+        method: "DELETE",
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error("No se pudo eliminar la licitación.");
+      }
+
+      // Actualizamos el estado local quitando la licitación borrada para que desaparezca de la tabla al instante
+      setLicitaciones((prev) => prev.filter((lic) => (lic.id ?? lic.licitacion_id) !== licId));
+    } catch (err) {
+      alert(err.message || "Ocurrió un error al intentar eliminar la licitación.");
+    }
+  };
+
   // Verificamos si es administrador
   const esAdmin = usuarioActual?.rol === "admin" || usuarioActual?.usuario_rol === "admin";
 
@@ -65,10 +94,8 @@ export default function DashboardPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          {/* Botones restringidos solo para administradores */}
           {esAdmin && (
             <>
-              {/* Botón para registrar cliente */}
               <button
                 type="button"
                 onClick={() => setIsClienteFormOpen(true)}
@@ -78,7 +105,6 @@ export default function DashboardPage() {
                 Registrar cliente
               </button>
 
-              {/* Botón para registrar usuario */}
               <button
                 type="button"
                 onClick={() => setIsUserFormOpen(true)}
@@ -137,7 +163,7 @@ export default function DashboardPage() {
                   <th className="px-5 py-3 font-medium">Entidad</th>
                   <th className="px-5 py-3 font-medium">Presupuesto</th>
                   <th className="px-5 py-3 font-medium">Estado</th>
-                  <th className="px-5 py-3" />
+                  <th className="px-5 py-3 text-right font-medium">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-brand-100">
@@ -161,13 +187,25 @@ export default function DashboardPage() {
                         <Badge estado={estado} />
                       </td>
                       <td className="px-5 py-3.5 text-right">
-                        <Link
-                          to={`/licitaciones/${licId}`}
-                          className="inline-flex items-center gap-1 text-sm font-medium text-brand-700 hover:text-brand-900"
-                        >
-                          Ver detalle
-                          <ChevronRight size={16} />
-                        </Link>
+                        <div className="flex items-center justify-end gap-3">
+                          <Link
+                            to={`/licitaciones/${licId}`}
+                            className="inline-flex items-center gap-1 text-sm font-medium text-brand-700 hover:text-brand-900"
+                          >
+                            Ver detalle
+                            <ChevronRight size={16} />
+                          </Link>
+
+                          {/* Botón de eliminar integrado en la tabla */}
+                          <button
+                            type="button"
+                            onClick={() => handleEliminar(licId, titulo)}
+                            className="text-rose-600 hover:text-rose-800 transition-colors"
+                            title="Eliminar licitación"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -185,10 +223,9 @@ export default function DashboardPage() {
         onCreated={(nueva) => setLicitaciones((prev) => [nueva, ...prev])}
       />
 
-      {/* Modales protegidos para que solo un admin los pueda abrir/renderizar */}
+      {/* Modales protegidos para administradores */}
       {esAdmin && (
         <>
-          {/* Modal para registrar nuevos usuarios */}
           <UsuarioForm
             isOpen={isUserFormOpen}
             onClose={() => setIsUserFormOpen(false)}
@@ -197,7 +234,6 @@ export default function DashboardPage() {
             }}
           />
 
-          {/* Modal para registrar nuevos clientes */}
           <ClienteForm
             isOpen={isClienteFormOpen}
             onClose={() => setIsClienteFormOpen(false)}
