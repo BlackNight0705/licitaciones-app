@@ -11,7 +11,7 @@ const SeccionPagosModal = ({ licitacion, onPagoExitoso, readOnly = false }) => {
 
   if (!licitacion) return null;
 
-  // 1. Extraer presupuesto de cualquier variante posible de la BD
+  // 1. Extraer presupuesto
   const presupuestoTotal = Number(
     licitacion.licitacion_presupuesto_maximo || 
     licitacion.presupuesto_maximo || 
@@ -19,14 +19,13 @@ const SeccionPagosModal = ({ licitacion, onPagoExitoso, readOnly = false }) => {
     0
   );
 
-  // 2. Extraer pagos asegurando que sea un arreglo válido
+  // 2. Extraer pagos
   const pagosRegistrados = Array.isArray(licitacion.pagos) ? licitacion.pagos : [];
   const totalPagado = pagosRegistrados.reduce((acc, p) => acc + (Number(p.pago_monto || p.monto) || 0), 0);
   
-  // Saldo pendiente matemático puro
   const saldoPendiente = Math.max(0, presupuestoTotal - totalPagado);
 
-  // 3. Revisar el texto del estado de forma amplia
+  // 3. Revisar el estado de forma amplia
   const estadoTexto = String(
     licitacion.licitacion_estado || 
     licitacion.estado || 
@@ -37,15 +36,15 @@ const SeccionPagosModal = ({ licitacion, onPagoExitoso, readOnly = false }) => {
   const esCobradaExplicita = Boolean(licitacion.cobrada || licitacion.is_cobrada) || estadoTexto.includes('cobrad');
   const estaPagadaTotalmente = saldoPendiente === 0 || esCobradaExplicita;
 
-  // Solo bloquear estrictamente en estados terminales negativos
+  // AJUSTE DE ESTADOS: Permitir en borrador o activa, bloquear solo en terminales negativos reales
   const estadosBloqueadosAbsolutos = ["perdida", "finalizada", "cancelada"];
   const estadoBloqueado = estadosBloqueadosAbsolutos.some(e => estadoTexto.includes(e));
 
-  // 4. Condición limpia y directa para el botón de pago
   const puedeRealizarPago = !readOnly && !estadoBloqueado && saldoPendiente > 0;
 
-  // NUEVO: Validar si el monto proyectado supera el presupuesto total permitido
+  // 4. Validaciones numéricas estrictas contra negativos
   const montoNum = parseFloat(monto) || 0;
+  const esNegativo = monto !== '' && montoNum < 0;
   const totalProyectadoPagos = totalPagado + montoNum;
   const superaPresupuesto = presupuestoTotal > 0 && totalProyectadoPagos > presupuestoTotal;
 
@@ -54,8 +53,8 @@ const SeccionPagosModal = ({ licitacion, onPagoExitoso, readOnly = false }) => {
     if (readOnly) return;
     setError('');
 
-    if (!montoNum || montoNum <= 0) {
-      setError('Ingresa un monto válido.');
+    if (esNegativo || montoNum <= 0) {
+      setError('No se permiten montos negativos o iguales a cero.');
       return;
     }
 
@@ -64,7 +63,6 @@ const SeccionPagosModal = ({ licitacion, onPagoExitoso, readOnly = false }) => {
       return;
     }
 
-    // BLOQUEO ESTRICTO: Evitar enviar si supera el presupuesto máximo
     if (superaPresupuesto) {
       setError(`El abono excede el presupuesto máximo permitido ($${presupuestoTotal.toFixed(2)}).`);
       return;
@@ -156,6 +154,7 @@ const SeccionPagosModal = ({ licitacion, onPagoExitoso, readOnly = false }) => {
                 <input
                   type="number"
                   step="0.01"
+                  min="0.01"
                   max={saldoPendiente}
                   value={monto}
                   onChange={(e) => setMonto(e.target.value)}
@@ -179,11 +178,19 @@ const SeccionPagosModal = ({ licitacion, onPagoExitoso, readOnly = false }) => {
                 </select>
               </div>
 
-              {/* Alerta visual en tiempo real si el monto ingresado supera el presupuesto */}
-              {superaPresupuesto && (
+              {/* Alerta de números negativos */}
+              {esNegativo && (
                 <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-md flex items-center gap-2">
                   <AlertCircle className="w-4 h-4 shrink-0" />
-                  <span>¡Atención! Este abono excede el presupuesto máximo (${presupuestoTotal.toFixed(2)}).</span>
+                  <span>No se permiten números negativos.</span>
+                </div>
+              )}
+
+              {/* Alerta si supera presupuesto */}
+              {superaPresupuesto && !esNegativo && (
+                <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-md flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>Este abono excede el presupuesto máximo (${presupuestoTotal.toFixed(2)}).</span>
                 </div>
               )}
 
@@ -204,7 +211,7 @@ const SeccionPagosModal = ({ licitacion, onPagoExitoso, readOnly = false }) => {
                 </button>
                 <button
                   type="submit"
-                  disabled={cargando || superaPresupuesto}
+                  disabled={cargando || superaPresupuesto || esNegativo}
                   className="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {cargando ? 'Guardando...' : 'Confirmar Abono'}

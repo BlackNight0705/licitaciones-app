@@ -192,7 +192,14 @@ async def cambiar_estado_licitacion(session: AsyncSession, licitacion_id: int, n
 
 # Funcion para agregar un producto a la licitacion (restringiendo al propietario y solo en borrador)
 async def agregar_producto_licitacion(session: AsyncSession, licitacion_id: int, data, usuario_current) -> LicitacionProducto:
-    # Cargamos la licitación junto con sus productos actuales para poder sumarizar
+    # Validar entrada de números positivos estrictos
+    if data.cantidad <= 0 or data.precio_unitario < 0: # Dependiendo si el precio puede ser 0 o estrictamente > 0
+        raise HTTPException(
+            status_code=400,
+            detail="La cantidad debe ser mayor a cero y el precio no puede ser negativo."
+        )
+
+    # Cargamos la licitación junto con sus productos actuales
     licitacion_res = await session.execute(
         select(Licitacion)
         .options(selectinload(Licitacion.productos))
@@ -205,11 +212,12 @@ async def agregar_producto_licitacion(session: AsyncSession, licitacion_id: int,
     if not licitacion:
         raise HTTPException(status_code=404, detail="Licitación no encontrada o no tienes permisos")
 
-    # REGLA: Solo se pueden agregar productos si está en estado borrador
-    if licitacion.licitacion_estado != "borrador":
+    # REGLA AJUSTADA: Solo se pueden agregar productos si está en estado 'borrador' o 'activa'
+    estado_actual = str(licitacion.licitacion_estado or "").lower()
+    if "borrador" not in estado_actual and "activa" not in estado_actual:
         raise HTTPException(
             status_code=400,
-            detail=f"No se pueden agregar productos a una licitación en estado '{licitacion.licitacion_estado}'."
+            detail=f"No se pueden modificar productos en una licitación con estado '{licitacion.licitacion_estado}'."
         )
 
     # REGLA DE PRESUPUESTO: Calcular el costo actual + el nuevo producto
@@ -223,7 +231,7 @@ async def agregar_producto_licitacion(session: AsyncSession, licitacion_id: int,
     if licitacion.licitacion_presupuesto_maximo is not None and costo_total_proyectado > licitacion.licitacion_presupuesto_maximo:
         raise HTTPException(
             status_code=400,
-            detail=f"El costo total proyectado ({costo_total_proyectado}) supera el presupuesto máximo permitido ({licitacion.licitacion_presupuesto_maximo})."
+            detail=f"El costo total proyectado (${costo_total_proyectado:.2f}) supera el presupuesto máximo permitido (${licitacion.licitacion_presupuesto_maximo:.2f})."
         )
 
     stmt = select(Producto).where(Producto.producto_nombre == data.nombre)
