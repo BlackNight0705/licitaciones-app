@@ -9,17 +9,20 @@ const SeccionPagosModal = ({ licitacion, onPagoExitoso, readOnly = false }) => {
   const [error, setError] = useState('');
   const [cargando, setCargando] = useState(false);
 
-  // 1. Cálculos sencillos basados estrictamente en el presupuesto total
+  // Verificamos si la licitación ya está cobrada, ganada o pagada en su estado general
+  const estadoActual = (licitacion.licitacion_estado || '').toLowerCase();
+  const estaCobradaGeneral = ["cobrada", "ganada", "adjudicada"].includes(estadoActual);
+
   const presupuestoTotal = Number(licitacion.licitacion_presupuesto_maximo) || 0;
   const pagosRegistrados = licitacion.pagos || [];
   const totalPagado = pagosRegistrados.reduce((acc, p) => acc + (Number(p.pago_monto) || 0), 0);
   
-  // Si la licitación ya está cobrada/ganada o el total pagado cubre el presupuesto, el saldo pendiente es 0
-  const estaPagadaTotalmente = licitacion.licitacion_estado === 'ganada' || totalPagado >= presupuestoTotal;
-  const saldoPendiente = estaPagadaTotalmente ? 0 : Math.max(0, presupuestoTotal - totalPagado);
+  // Si ya está marcada como cobrada arriba, forzamos que el saldo pendiente sea 0 automáticamente
+  const saldoPendiente = estaCobradaGeneral ? 0 : Math.max(0, presupuestoTotal - totalPagado);
+  const estaPagadaTotalmente = saldoPendiente === 0 || estaCobradaGeneral;
 
-  const estadosBloqueadosParaPagos = ["perdida", "finalizada", "cancelada", "ganada"];
-  const puedeRealizarPago = !readOnly && !estadosBloqueadosParaPagos.includes(licitacion.licitacion_estado) && saldoPendiente > 0;
+  const estadosBloqueadosParaPagos = ["perdida", "finalizada", "cancelada", "cobrada", "ganada", "adjudicada"];
+  const puedeRealizarPago = !readOnly && !estadosBloqueadosParaPagos.includes(estadoActual) && saldoPendiente > 0;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -91,7 +94,6 @@ const SeccionPagosModal = ({ licitacion, onPagoExitoso, readOnly = false }) => {
         </div>
       </div>
 
-      {/* Botón condicional: si ya está pagada o no se puede pagar, se deshabilita */}
       {puedeRealizarPago ? (
         <button
           onClick={() => setModalAbierto(true)}
@@ -105,7 +107,7 @@ const SeccionPagosModal = ({ licitacion, onPagoExitoso, readOnly = false }) => {
           <AlertCircle className="w-4 h-4 shrink-0" />
           <span>
             {estaPagadaTotalmente 
-              ? "Esta licitación ya se encuentra pagada en su totalidad ($0.00 restante)." 
+              ? "Esta licitación ya se encuentra cobrada y saldada ($0.00 restante)." 
               : `El registro de pagos no está disponible para el estado "${licitacion.licitacion_estado}".`}
           </span>
         </div>
