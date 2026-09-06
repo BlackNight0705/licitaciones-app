@@ -1,4 +1,6 @@
-from sqlalchemy import Column, Integer, String
+from email.policy import default
+
+from sqlalchemy import Boolean, Column, Integer, String
 from backend.app.core.database import Base
 from .auditMixin import AuditMixin
 
@@ -11,3 +13,4 @@ class Cliente(Base, AuditMixin):
     cliente_email = Column(String, nullable=False)
     cliente_telefono = Column(String)
     cliente_empresa = Column(String)
+    cliente_estado = Column(Boolean,default=True, nullable=False)  # activo / inactivo

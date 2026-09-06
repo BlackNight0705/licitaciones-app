@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String
+from sqlalchemy import Boolean, Column, Integer, String
 from .auditMixin import AuditMixin
 from backend.app.core.database import Base
 
@@ -11,3 +11,4 @@ class Usuario(Base, AuditMixin):
     usuario_email = Column(String, unique=True, nullable=False)
     usuario_hashed_password = Column(String, nullable=False)
     usuario_rol = Column(String, nullable=False)  # admin / user
+    usuario_estado = Column(Boolean, default=True, nullable=False)  # activo / inactivo
