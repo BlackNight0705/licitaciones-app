@@ -7,7 +7,7 @@ import ProductoList from "../components/productos/ProductoList.jsx";
 import UploadDocumento from "../components/documentos/UploadDocumento.jsx";
 import HistorialList from "../components/historial/HistorialList.jsx";
 import SeccionPagosModal from "../components/pago/PagoForm.jsx";
-import { getLicitacion, getHistorial, actualizarLicitacion,eliminarLicitacion } from "../api/licitaciones.js";
+import { getLicitacion, getHistorial, actualizarLicitacion, eliminarLicitacion } from "../api/licitaciones.js";
 
 export default function LicitacionDetailPage() {
   const { id } = useParams();
@@ -45,10 +45,11 @@ export default function LicitacionDetailPage() {
     setIsLoading(true);
     setError(null);
     try {
-      const [licData, histData] = await Promise.all([
-        getLicitacion(id),
-        getHistorial(id).catch(() => []),
-      ]);
+      // Cargamos la licitación de forma prioritaria
+      const licData = await getLicitacion(id);
+      if (!licData) {
+        throw new Error("No se encontró la información de la licitación.");
+      }
       setLicitacion(licData);
       
       setFormData({
@@ -59,10 +60,19 @@ export default function LicitacionDetailPage() {
         licitacion_cliente_id: licData.licitacion_cliente_id || "",
       });
 
-      setHistorial(Array.isArray(histData) ? histData : histData?.items || []);
+      // Cargamos el historial de forma independiente para que un fallo aquí no rompa la página principal
+      try {
+        const histData = await getHistorial(id);
+        const historialArray = Array.isArray(histData) ? histData : (histData?.items || []);
+        setHistorial(historialArray);
+      } catch (histErr) {
+        console.warn("No se pudo cargar el historial:", histErr);
+        setHistorial([]);
+      }
+
     } catch (err) {
       setError(
-        err.response?.data?.detail || "No se pudo cargar la licitación."
+        err.response?.data?.detail || err.message || "No se pudo cargar la licitación."
       );
     } finally {
       setIsLoading(false);
@@ -70,7 +80,9 @@ export default function LicitacionDetailPage() {
   };
 
   useEffect(() => {
-    loadData();
+    if (id) {
+      loadData();
+    }
   }, [id]);
 
   const handleGuardarCambios = async (nuevoEstado = null) => {
@@ -105,17 +117,17 @@ export default function LicitacionDetailPage() {
     }
   };
 
-const handleEliminarLicitacion = async () => {
-  setIsSaving(true);
-  try {
-    await eliminarLicitacion(id);
-    navigate("/");
-  } catch (err) {
-    mostrarAlerta(err.response?.data?.detail || "Error al eliminar la licitación.", "error");
-    setIsSaving(false);
-    setIsConfirmingEliminar(false);
-  }
-};
+  const handleEliminarLicitacion = async () => {
+    setIsSaving(true);
+    try {
+      await eliminarLicitacion(id);
+      navigate("/");
+    } catch (err) {
+      mostrarAlerta(err.response?.data?.detail || "Error al eliminar la licitación.", "error");
+      setIsSaving(false);
+      setIsConfirmingEliminar(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -128,9 +140,14 @@ const handleEliminarLicitacion = async () => {
 
   if (error || !licitacion) {
     return (
-      <div className="card flex items-center gap-2.5 px-5 py-4 text-sm text-rose-700">
-        <AlertCircle size={18} />
-        {error || "Licitación no encontrada."}
+      <div className="space-y-4">
+        <Link to="/" className="inline-flex items-center gap-1.5 text-sm font-medium text-ink-500 hover:text-brand-700">
+          <ArrowLeft size={16} /> Volver al listado
+        </Link>
+        <div className="card flex items-center gap-2.5 px-5 py-4 text-sm text-rose-700 bg-rose-50 border border-rose-200">
+          <AlertCircle size={18} />
+          {error || "Licitación no encontrada."}
+        </div>
       </div>
     );
   }
@@ -462,7 +479,7 @@ const handleEliminarLicitacion = async () => {
 
           <ProductoList
             licitacionId={id}
-            productos={licitacion.productos}
+            productos={licitacion.productos || []}
             presupuestoMaximo={licitacion.licitacion_presupuesto_maximo}
             readOnly={!permiteModificarProductos}
             onRemoved={(productoId) =>

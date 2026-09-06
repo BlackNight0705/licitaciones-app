@@ -4,6 +4,7 @@ from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 
 from backend.app.core.database import get_session
+from backend.app.models.cliente import Cliente
 from backend.app.models.usuario import Usuario
 from backend.app.models.auditoria import AuditLog
 from backend.app.core.security import obtener_usuario_actual
@@ -48,6 +49,23 @@ async def obtener_todos_los_usuarios(
             "rol": u.usuario_rol
         }
         for u in usuarios
+    ]
+
+@router.get("/clientes")
+async def obtener_todos_los_clientes(
+    session: AsyncSession = Depends(get_session),
+    admin: Usuario = Depends(verificar_rol_admin)
+):
+    resultado = await session.execute(select(Cliente))
+    clientes = resultado.scalars().all()
+    
+    return [
+        {
+            "id": c.cliente_id,
+            "nombre": c.cliente_nombre,
+            # Agrega los campos que correspondan a tu modelo Cliente
+        }
+        for c in clientes
     ]
 
 # Endpoint para ver la Bitácora de Auditoría (solo admin)

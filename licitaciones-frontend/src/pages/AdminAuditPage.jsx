@@ -9,8 +9,14 @@ export default function AdminAuditPage() {
   useEffect(() => {
     const fetchLogs = async () => {
       try {
+        setLoading(true);
+        setError(null);
         const response = await api.get("/api/admin/auditorias");
-        setLogs(response.data);
+        
+        // Manejo defensivo: nos aseguramos de que sea un array sin importar si viene directo o paginado
+        const data = response.data;
+        const logsArray = Array.isArray(data) ? data : (data?.items || []);
+        setLogs(logsArray);
       } catch (err) {
         setError(err.response?.data?.detail || "No tienes permisos para ver la bitácora de auditoría.");
       } finally {
@@ -40,19 +46,27 @@ export default function AdminAuditPage() {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {logs.map((log) => (
-              <tr key={log.id} className="hover:bg-gray-50">
-                <td className="px-6 py-4 whitespace-nowrap text-xs text-gray-500">
-                  {new Date(log.fecha_hora).toLocaleString()}
+            {logs.length === 0 ? (
+              <tr>
+                <td colSpan="5" className="px-6 py-4 text-center text-sm text-gray-500">
+                  No hay registros de auditoría disponibles.
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                  {log.usuario_id || "Sistema"}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{log.modulo}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-indigo-600">{log.accion}</td>
-                <td className="px-6 py-4 text-sm text-gray-600">{log.detalles}</td>
               </tr>
-            ))}
+            ) : (
+              logs.map((log, index) => (
+                <tr key={log.id || index} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap text-xs text-gray-500">
+                    {log.fecha_hora ? new Date(log.fecha_hora).toLocaleString() : "—"}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    {log.usuario_id || "Sistema"}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{log.modulo || "—"}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-indigo-600">{log.accion || "—"}</td>
+                  <td className="px-6 py-4 text-sm text-gray-600">{log.detalles || "—"}</td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>

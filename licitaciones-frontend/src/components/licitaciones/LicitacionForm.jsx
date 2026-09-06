@@ -55,12 +55,11 @@ export default function LicitacionForm({ isOpen, onClose, onCreated }) {
       const payload = {
         licitacion_titulo: form.titulo,
         licitacion_descripcion: form.descripcion,
+        licitacion_entidad: form.entidad, // <--- ¡Añadido para que coincida con el input!
         licitacion_presupuesto_maximo: form.presupuesto ? Number(form.presupuesto) : 0,
         licitacion_fecha_limite: form.fecha_cierre ? `${form.fecha_cierre}T00:00:00` : null,
         licitacion_estado: "borrador",
         licitacion_cliente_id: form.cliente_id ? Number(form.cliente_id) : 1,
-        // Si tu backend requiere explícitamente el usuario_id en el payload o lo saca del token:
-        // licitacion_usuario_id: 1, 
       };
       const nueva = await createLicitacion(payload);
       onCreated?.(nueva);
