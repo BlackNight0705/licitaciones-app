@@ -1,6 +1,6 @@
-from pydantic import BaseModel, Field, computed_field, field_validator
-from typing import List, Optional
 from datetime import datetime, date
+from typing import List, Optional
+from pydantic import BaseModel, Field, computed_field, field_validator
 
 from backend.app.schemas.licitacion_producto_schema import LicitacionProductoResponse
 from backend.app.schemas.historial_transicion_schema import HistorialTransicionResponse
@@ -70,13 +70,3 @@ class LicitacionUpdate(BaseModel):
     licitacion_fecha_limite: Optional[datetime] = Field(None, description="Fecha límite de la licitación.")
     licitacion_cliente_id: Optional[int] = Field(None, gt=0)
     licitacion_estado: Optional[str] = Field(None, min_length=1, max_length=50)
-
-    @field_validator("licitacion_fecha_limite")
-    @classmethod
-    def validar_fecha_no_pasada_update(cls, value: Optional[datetime | date]) -> Optional[datetime | date]:
-        if value is None:
-            return value
-        fecha_ingresada = value.date() if isinstance(value, datetime) else value
-        if fecha_ingresada < date.today():
-            raise ValueError("La fecha límite no puede ser anterior al día de hoy.")
-        return value
