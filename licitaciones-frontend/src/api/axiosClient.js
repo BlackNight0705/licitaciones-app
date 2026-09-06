@@ -1,6 +1,5 @@
 import axios from "axios";
 
-// URL base del backend FastAPI. Configurable vía variable de entorno.
 export const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
@@ -9,11 +8,10 @@ const axiosClient = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
-  // OBLIGATORIO: Permite que el navegador envíe y reciba las cookies HttpOnly automáticamente
   withCredentials: true,
 });
 
-// Variables para controlar la cola de peticiones mientras se renueva el token
+// Variables para el refresh token...
 let isRefreshing = false;
 let failedQueue = [];
 
@@ -28,16 +26,33 @@ const processQueue = (error, token = null) => {
   failedQueue = [];
 };
 
-// Interceptor de respuesta para manejar la expiración y renovación del token
 axiosClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
 
-    // Si el error es 401 y no hemos intentado reintentar esta petición aún
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // 1. INTERCEPTOR PARA ERRORES DE VALIDACIÓN (Pydantic 422 o Bad Request 400)
+    if (error.response && (error.response.status === 422 || error.response.status === 400)) {
+      const detalle = error.response.data.detail;
       
-      // Evitamos bucles infinitos si el propio endpoint de refresh o el login fallan con 401
+      let mensajeError = "Datos inválidos.";
+      
+      // Si Pydantic manda un arreglo de errores detallados
+      if (Array.isArray(detalle)) {
+        mensajeError = detalle.map(e => {
+          const campo = e.loc[e.loc.length - 1];
+          return `- [${campo}]: ${e.msg}`;
+        }).join("\n");
+      } else if (typeof detalle === "string") {
+        mensajeError = detalle;
+      }
+
+      // Rechazamos la promesa pero con un Error limpio que ya trae el mensaje formateado
+      return Promise.reject(new Error(mensajeError));
+    }
+
+    // 2. TU LÓGICA EXISTENTE PARA TOKENS 401 (Refresh token)
+    if (error.response?.status === 401 && !originalRequest._retry) {
       if (originalRequest.url.includes("/login") || originalRequest.url.includes("/refresh")) {
         localStorage.removeItem("usuario_rol");
         localStorage.removeItem("usuario_email");
@@ -48,37 +63,24 @@ axiosClient.interceptors.response.use(
       }
 
       if (isRefreshing) {
-        // Si ya hay una petición refrescando el token, encolamos las demás
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
         })
-          .then(() => {
-            return axiosClient(originalRequest);
-          })
-          .catch((err) => {
-            return Promise.reject(err);
-          });
+          .then(() => axiosClient(originalRequest))
+          .catch((err) => Promise.reject(err));
       }
 
       originalRequest._retry = true;
       isRefreshing = true;
 
       try {
-        // Llamada al endpoint de refresco en tu FastAPI. 
-        // Como usa cookies HttpOnly, el navegador enviará automáticamente la cookie de refresh.
-        // Ajusta la ruta "/auth/refresh" o "/token/refresh" según tu backend.
-        await axiosClient.post("/auth/refresh"); 
-
+        await axiosClient.post("/auth/refresh");
         processQueue(null);
         isRefreshing = false;
-
-        // Reintentamos la petición original que dio 401
         return axiosClient(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError, null);
         isRefreshing = false;
-
-        // Si el refresh token también expiró o es inválido, limpiamos y mandamos al login
         localStorage.removeItem("usuario_rol");
         localStorage.removeItem("usuario_email");
         if (window.location.pathname !== "/login") {

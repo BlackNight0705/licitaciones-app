@@ -1,35 +1,43 @@
-from pydantic import BaseModel, computed_field
-from typing import List
-from datetime import datetime  # Asegúrate de importarlo correctamente aquí
+from pydantic import BaseModel, Field, computed_field, field_validator
+from typing import List, Optional
+from datetime import datetime, date
 
 from backend.app.schemas.licitacion_producto_schema import LicitacionProductoResponse
 from backend.app.schemas.historial_transicion_schema import HistorialTransicionResponse
 from backend.app.schemas.pago_schema import PagoResponse
 
 class ClienteShortResponse(BaseModel):
-    cliente_id: int
-    cliente_nombre: str  # Ajusta este campo si en tu modelo de cliente se llama diferente (ej: 'nombre')
+    cliente_id: int = Field(..., gt=0, description="ID único del cliente.")
+    cliente_nombre: str = Field(..., min_length=1, max_length=150, description="Nombre del cliente.")
 
     class Config:
         from_attributes = True
 
 class LicitacionBase(BaseModel):
-    licitacion_titulo: str
-    licitacion_descripcion: str | None = None
-    licitacion_presupuesto_maximo: float
-    licitacion_fecha_limite: datetime
-    licitacion_documento_url: str | None = None
+    licitacion_titulo: str = Field(..., min_length=3, max_length=200, description="Título de la licitación.")
+    licitacion_descripcion: Optional[str] = Field(None, max_length=1000, description="Descripción opcional.")
+    licitacion_presupuesto_maximo: float = Field(..., gt=0, description="El presupuesto máximo debe ser mayor a 0.")
+    licitacion_fecha_limite: datetime = Field(..., description="Fecha límite de la licitación.")
+    licitacion_documento_url: Optional[str] = Field(None, max_length=500, description="URL del documento adjunto.")
+
+    @field_validator("licitacion_fecha_limite")
+    @classmethod
+    def validar_fecha_no_pasada(cls, value: datetime | date) -> datetime | date:
+        fecha_ingresada = value.date() if isinstance(value, datetime) else value
+        if fecha_ingresada < date.today():
+            raise ValueError("La fecha límite no puede ser anterior al día de hoy.")
+        return value
 
 class LicitacionCreate(LicitacionBase):
-    licitacion_cliente_id: int
+    licitacion_cliente_id: int = Field(..., gt=0, description="El ID del cliente asociado debe ser mayor a 0.")
 
 class LicitacionResponse(LicitacionBase):
-    licitacion_id: int
-    licitacion_estado: str 
-    licitacion_cliente_id: int
+    licitacion_id: int = Field(..., gt=0)
+    licitacion_estado: str = Field(..., min_length=1, max_length=50)
+    licitacion_cliente_id: int = Field(..., gt=0)
     licitacion_cumple_requisitos: bool
     licitacion_aprobada_por_admin: bool
-    cliente: ClienteShortResponse | None = None  # <-- Integrado para traer los datos del cliente/empresa
+    cliente: Optional[ClienteShortResponse] = None
 
     class Config:
         from_attributes = True
@@ -37,7 +45,7 @@ class LicitacionResponse(LicitacionBase):
 class LicitacionDetailResponse(LicitacionResponse):
     productos: List[LicitacionProductoResponse] = []
     historial: List[HistorialTransicionResponse] = []
-    pagos: List[PagoResponse] = []  # <--- Añades esto
+    pagos: List[PagoResponse] = []
 
     @computed_field
     @property
@@ -55,13 +63,20 @@ class LicitacionDetailResponse(LicitacionResponse):
     class Config:
         from_attributes = True
 
-    class Config:
-        from_attributes = True
-
 class LicitacionUpdate(BaseModel):
-    licitacion_titulo: str | None = None
-    licitacion_descripcion: str | None = None
-    licitacion_presupuesto_maximo: float | None = None
-    licitacion_fecha_limite: datetime | None = None
-    licitacion_cliente_id: int | None = None
-    licitacion_estado: str | None = None
+    licitacion_titulo: Optional[str] = Field(None, min_length=3, max_length=200)
+    licitacion_descripcion: Optional[str] = Field(None, max_length=1000)
+    licitacion_presupuesto_maximo: Optional[float] = Field(None, gt=0)
+    licitacion_fecha_limite: Optional[datetime] = Field(None, description="Fecha límite de la licitación.")
+    licitacion_cliente_id: Optional[int] = Field(None, gt=0)
+    licitacion_estado: Optional[str] = Field(None, min_length=1, max_length=50)
+
+    @field_validator("licitacion_fecha_limite")
+    @classmethod
+    def validar_fecha_no_pasada_update(cls, value: Optional[datetime | date]) -> Optional[datetime | date]:
+        if value is None:
+            return value
+        fecha_ingresada = value.date() if isinstance(value, datetime) else value
+        if fecha_ingresada < date.today():
+            raise ValueError("La fecha límite no puede ser anterior al día de hoy.")
+        return value
