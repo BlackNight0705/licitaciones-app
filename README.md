@@ -22,8 +22,8 @@ Aplicación web full-stack diseñada para la administración integral de proceso
   - Control de migraciones de base de datos ejecutado con Alembic
   - Supabase y librerías de soporte (Postgrest, Storage3, Realtime) para la gestión y almacenamiento de archivos de propuestas
 - **Servicios Externos:** 
-  - Resend para el envío transaccional de correos electrónicos con soporte nativo para archivos adjuntos[cite: 1]
-  - APScheduler para la automatización de tareas programadas (Background Jobs / Cron) orientadas al control de vencimientos y envío de recordatorios a 48 horas[cite: 1]
+  - Resend para el envío transaccional de correos electrónicos con soporte nativo para archivos adjuntos
+  - APScheduler para la automatización de tareas programadas (Background Jobs / Cron) orientadas al control de vencimientos y envío de recordatorios a 48 horas
 
 ## Estructura del Proyecto
 
@@ -42,7 +42,7 @@ licitaciones-app/
     ├── app/
     │   ├── core/         # Configuración general y seguridad
     │   ├── models/       # Esquemas de base de datos SQLAlchemy
-    │   ├── routes/       # Endpoints de Clientes, Licitaciones, Productos y Pagos[cite: 1]
+    │   ├── routes/       # Endpoints de Clientes, Licitaciones, Productos y Pagos
     │   ├── schemas/      # Modelos Pydantic para validación de datos
     │   ├── services/     # Integración de correo, almacenamiento y programador de tareas
     │   └── utils/        # Utilidades y funciones auxiliares
@@ -52,18 +52,18 @@ licitaciones-app/
 ```
 
 ## Reglas de Negocio Implementadas
-* Control de Acceso: Autenticación obligatoria con control de roles (administrador y usuario)[cite: 1].
-* Ciclo de Estado de Licitaciones: Flujo controlado entre los estados borrador, activa, finalizada, por_cobrar, cobrada y perdida[cite: 1]. Transiciones no válidas son rechazadas por la API[cite: 1].
-* Validación de Documentos: Una licitación en estado borrador solo puede transicionar a activa si cuenta estrictamente con un documento de propuesta adjunto[cite: 1].
-* Presupuesto Máximo: La suma de los precios por cantidad de los productos asociados no puede superar el presupuesto máximo configurado en la licitación[cite: 1].
-* Automatización Temporal: Verificación automática periódica mediante APScheduler para transicionar a estado perdida aquellas licitaciones activas cuya fecha límite haya expirado, así como el envío de correos de recordatorio dentro del plazo de 48 horas previas al cierre[cite: 1].
-* Auditoría: Registro detallado en el historial de transiciones de cada cambio de estado, incluyendo usuario responsable, marca de tiempo y estado anterior/nuevo[cite: 1].
+* Control de Acceso: Autenticación obligatoria con control de roles (administrador y usuario).
+* Ciclo de Estado de Licitaciones: Flujo controlado entre los estados borrador, activa, finalizada, por_cobrar, cobrada y perdida. Transiciones no válidas son rechazadas por la API.
+* Validación de Documentos: Una licitación en estado borrador solo puede transicionar a activa si cuenta estrictamente con un documento de propuesta adjunto.
+* Presupuesto Máximo: La suma de los precios por cantidad de los productos asociados no puede superar el presupuesto máximo configurado en la licitación.
+* Automatización Temporal: Verificación automática periódica mediante APScheduler para transicionar a estado perdida aquellas licitaciones activas cuya fecha límite haya expirado, así como el envío de correos de recordatorio dentro del plazo de 48 horas previas al cierre.
+* Auditoría: Registro detallado en el historial de transiciones de cada cambio de estado, incluyendo usuario responsable, marca de tiempo y estado anterior/nuevo.
 
 ## Requisitos Previos
 Antes de ejecutar el proyecto de manera local, asegúrese de contar con:
 * Node.js (versión 18 o superior)
 * Python (versión 3.10 o superior)
-* Instancia de PostgreSQL (local o en la nube mediante Supabase)[cite: 1]
+* Instancia de PostgreSQL (local o en la nube mediante Supabase)
 
 ## Instrucciones de Instalación y Ejecución Local
 
