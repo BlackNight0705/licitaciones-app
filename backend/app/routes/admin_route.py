@@ -13,7 +13,7 @@ from backend.app.core.security import obtener_usuario_actual, obtener_password_h
 
 router = APIRouter(prefix="/admin", tags=["Administración"])
 
-#verificar si el usuario actual es admin
+# Verificar si el usuario actual es admin
 async def verificar_rol_admin(current_user: Usuario = Depends(obtener_usuario_actual)):
     if getattr(current_user, "usuario_rol", None) != "admin":
         raise HTTPException(
@@ -46,7 +46,7 @@ class ClienteUpdateAdmin(BaseModel):
     cliente_telefono: Optional[str] = None
     cliente_empresa: Optional[str] = None
 
-#obtenemos todos los usuarios (Se añaden campos extra útiles para el frontend)
+# Obtenemos todos los usuarios
 @router.get("/usuarios")
 async def obtener_todos_los_usuarios(
     session: AsyncSession = Depends(get_session),
@@ -69,12 +69,12 @@ async def obtener_todos_los_usuarios(
             "nombre": u.usuario_nombre,
             "email": u.usuario_email,
             "rol": u.usuario_rol,
-            "activo": getattr(u, "usuario_activo", True)
+            "activo": getattr(u, "usuario_estado", True)
         }
         for u in usuarios
     ]
 
-#actualizamos un usuario
+# Actualizamos un usuario
 @router.put("/usuarios/{usuario_id}")
 async def actualizar_usuario_admin(
     usuario_id: int,
@@ -96,8 +96,9 @@ async def actualizar_usuario_admin(
         usuario.usuario_rol = datos.usuario_rol
     if datos.usuario_password is not None:
         usuario.usuario_hashed_password = obtener_password_hash(datos.usuario_password)
+    if datos.usuario_estado is not None:
+        usuario.usuario_estado = datos.usuario_estado
 
-    # Registrar el ID del administrador que realiza la modificación
     if hasattr(usuario, "entidad_modificador_id"):
         usuario.entidad_modificador_id = admin.usuario_id
 
@@ -114,7 +115,7 @@ async def actualizar_usuario_admin(
 
     return {"mensaje": "Usuario actualizado exitosamente", "usuario_id": usuario.usuario_id}
 
-#Desactivacion de usuario
+# Desactivación de usuario
 @router.patch("/usuarios/{usuario_id}/desactivar", status_code=status.HTTP_200_OK)
 async def desactivar_usuario_admin(
     usuario_id: int,
@@ -130,28 +131,29 @@ async def desactivar_usuario_admin(
     if not usuario:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
 
-    # Alternar el estado actual (si está activo pasa a inactivo y viceversa)
-    usuario.usuario_activo = not getattr(usuario, "usuario_activo", True)
+    # CORRECCIÓN: Usar usuario_estado en lugar de usuario_activo
+    estado_actual = getattr(usuario, "usuario_estado", True)
+    usuario.usuario_estado = not estado_actual
 
-    # Registrar quién modificó el registro
     if hasattr(usuario, "entidad_modificador_id"):
         usuario.entidad_modificador_id = admin.usuario_id
 
     await session.commit()
+    await session.refresh(usuario)
 
-    accion_texto = "ACTIVAR" if usuario.usuario_activo else "DESACTIVAR"
+    accion_texto = "ACTIVAR" if usuario.usuario_estado else "DESACTIVAR"
 
     await registrar_accion(
         session=session,
         usuario_id=admin.usuario_id,
         accion=accion_texto,
         modulo="Usuarios",
-        detalles=f"El administrador cambió el estado del usuario ID {usuario_id} a activo={usuario.usuario_activo}."
+        detalles=f"El administrador cambió el estado del usuario ID {usuario_id} a activo={usuario.usuario_estado}."
     )
 
-    return {"mensaje": f"Estado del usuario actualizado exitosamente", "usuario_activo": usuario.usuario_activo}
+    return {"mensaje": "Estado del usuario actualizado exitosamente", "usuario_activo": usuario.usuario_estado}
 
-#obtenemos todos los clientes (Se incluyen email, telefono y empresa para la tabla del frontend)
+# Obtenemos todos los clientes
 @router.get("/clientes")
 async def obtener_todos_los_clientes(
     session: AsyncSession = Depends(get_session),
@@ -180,7 +182,7 @@ async def obtener_todos_los_clientes(
         for c in clientes
     ]
 
-#actualizamos un cliente
+# Actualizamos un cliente
 @router.put("/clientes/{cliente_id}")
 async def actualizar_cliente_admin(
     cliente_id: int,
@@ -203,7 +205,6 @@ async def actualizar_cliente_admin(
     if datos.cliente_empresa is not None:
         cliente.cliente_empresa = datos.cliente_empresa
 
-    # Registrar el ID del administrador que realiza la modificación
     if hasattr(cliente, "entidad_modificador_id"):
         cliente.entidad_modificador_id = admin.usuario_id
 
@@ -220,7 +221,7 @@ async def actualizar_cliente_admin(
 
     return {"mensaje": "Cliente actualizado exitosamente", "cliente_id": cliente.cliente_id}
 
-# Cambio de estado de un cliente (Activación / Desactivación lógica)
+# Cambio de estado de un cliente
 @router.patch("/clientes/{cliente_id}/estado", status_code=status.HTTP_200_OK)
 async def cambiar_estado_cliente_admin(
     cliente_id: int,
@@ -235,14 +236,13 @@ async def cambiar_estado_cliente_admin(
 
     nombre_cliente = getattr(cliente, "cliente_nombre", "Desconocido")
     
-    # Alternar estado (si es True pasa a False, y viceversa)
     cliente.cliente_estado = not getattr(cliente, "cliente_estado", True)
 
-    # Registrar quién modificó el registro usando la columna de la entidad base
     if hasattr(cliente, "entidad_modificador_id"):
         cliente.entidad_modificador_id = admin.usuario_id
 
     await session.commit()
+    await session.refresh(cliente)
 
     accion_texto = "ACTIVAR" if cliente.cliente_estado else "DESACTIVAR"
 
