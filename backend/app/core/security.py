@@ -48,6 +48,17 @@ def crear_access_token(data: dict, expires_delta: Optional[timedelta] = None) ->
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
 
+def decodificar_token(token: str) -> dict:
+    try:
+        payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
+        return payload
+    except JWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token de actualización expirado o inválido",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
 async def obtener_usuario_actual(
     token: str = Depends(oauth2_scheme),
     session: AsyncSession = Depends(get_session)
