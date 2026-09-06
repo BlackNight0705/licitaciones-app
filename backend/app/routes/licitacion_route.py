@@ -69,13 +69,13 @@ async def listar_licitaciones_route(
     session: AsyncSession = Depends(get_session),
     usuario_actual: Usuario = Depends(obtener_usuario_actual)
 ):
-    result = await session.execute(
-        select(Licitacion)
-        .options(selectinload(Licitacion.cliente))
-        .where(Licitacion.licitacion_usuario_id == usuario_actual.usuario_id)
-        .offset(skip)
-        .limit(limit)
-    )
+    query = select(Licitacion).options(selectinload(Licitacion.cliente))
+    
+    # Si no es admin, filtramos solo sus licitaciones
+    if getattr(usuario_actual, "usuario_rol", None) != "admin":
+        query = query.where(Licitacion.licitacion_usuario_id == usuario_actual.usuario_id)
+        
+    result = await session.execute(query.offset(skip).limit(limit))
     licitaciones = result.scalars().all()
     
     await registrar_accion(
@@ -83,7 +83,7 @@ async def listar_licitaciones_route(
         usuario_id=usuario_actual.usuario_id,
         accion="CONSULTA",
         modulo="Licitaciones",
-        detalles="El usuario consultó el listado de sus licitaciones."
+        detalles="El usuario consultó el listado de licitaciones."
     )
     
     return licitaciones
@@ -94,7 +94,8 @@ async def obtener_detalle_licitacion_route(
     session: AsyncSession = Depends(get_session),
     usuario_actual: Usuario = Depends(obtener_usuario_actual)
 ):
-    licitacion = await obtener_licitacion_detalle(session, licitacion_id, usuario_actual.usuario_id)
+    # Se pasa el objeto usuario_actual completo para validar permisos de admin vs usuario
+    licitacion = await obtener_licitacion_detalle(session, licitacion_id, usuario_actual)
     
     await registrar_accion(
         session=session,
@@ -113,7 +114,7 @@ async def cambiar_estado_route(
     session: AsyncSession = Depends(get_session),
     usuario_actual: Usuario = Depends(obtener_usuario_actual)
 ):
-    licitacion = await cambiar_estado_licitacion(session, licitacion_id, nuevo_estado, usuario_actual.usuario_id)
+    licitacion = await cambiar_estado_licitacion(session, licitacion_id, nuevo_estado, usuario_actual)
     
     await registrar_accion(
         session=session,
@@ -151,7 +152,7 @@ async def quitar_producto_route(
     session: AsyncSession = Depends(get_session),
     usuario_actual: Usuario = Depends(obtener_usuario_actual)
 ):
-    await quitar_producto_licitacion(session, licitacion_id, licitacion_producto_id, usuario_actual.usuario_id)
+    await quitar_producto_licitacion(session, licitacion_id, licitacion_producto_id, usuario_actual)
     
     await registrar_accion(
         session=session,
@@ -177,7 +178,7 @@ async def subir_documento_route(
         licitacion_id=licitacion_id, 
         contenido=contenido, 
         filename=archivo.filename, 
-        usuario_id=str(usuario_actual.usuario_id)
+        usuario_current=usuario_actual
     )
     
     await registrar_accion(
@@ -199,12 +200,11 @@ async def obtener_historial_licitacion_route(
     session: AsyncSession = Depends(get_session),
     usuario_actual: Usuario = Depends(obtener_usuario_actual)
 ):
-    result_lic = await session.execute(
-        select(Licitacion).where(
-            Licitacion.licitacion_id == licitacion_id,
-            Licitacion.licitacion_usuario_id == usuario_actual.usuario_id
-        )
-    )
+    query_lic = select(Licitacion).where(Licitacion.licitacion_id == licitacion_id)
+    if getattr(usuario_actual, "usuario_rol", None) != "admin":
+        query_lic = query_lic.where(Licitacion.licitacion_usuario_id == usuario_actual.usuario_id)
+        
+    result_lic = await session.execute(query_lic)
     if not result_lic.scalars().first():
         raise HTTPException(status_code=404, detail="Licitación no encontrada o no tienes permisos")
 
@@ -232,7 +232,7 @@ async def actualizar_licitacion_route(
     session: AsyncSession = Depends(get_session),
     usuario_actual: Usuario = Depends(obtener_usuario_actual)
 ):
-    licitacion = await actualizar_licitacion(session, licitacion_id, data, usuario_actual.usuario_id)
+    licitacion = await actualizar_licitacion(session, licitacion_id, data, usuario_actual)
     
     await registrar_accion(
         session=session,
@@ -250,7 +250,7 @@ async def eliminar_licitacion_route(
     session: AsyncSession = Depends(get_session), 
     usuario_actual: Usuario = Depends(obtener_usuario_actual)
 ):
-    await eliminar_licitacion(session, licitacion_id, usuario_actual.usuario_id)
+    await eliminar_licitacion(session, licitacion_id, usuario_actual)
     
     await registrar_accion(
         session=session,
