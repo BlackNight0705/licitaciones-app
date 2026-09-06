@@ -1,4 +1,3 @@
-# Este archivo contiene funciones de servicio para manejar operaciones relacionadas con licitaciones, incluyendo creación, cambio de estado, gestión de productos y documentos.
 from psycopg2 import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -53,7 +52,6 @@ async def _disparar_correo_seguro(licitacion: Licitacion, estado_nuevo: str):
     except Exception as e:
         print(f"Error al intentar enviar el correo de notificación: {e}")
 
-# Funcion para crear una licitacion
 async def crear_licitacion(session: AsyncSession, data: LicitacionCreate, usuario_id: int) -> Licitacion:
     try:
         licitacion = Licitacion(
@@ -75,7 +73,6 @@ async def crear_licitacion(session: AsyncSession, data: LicitacionCreate, usuari
         await session.rollback()
         raise HTTPException(status_code=400, detail=f"Error en la base de datos: {str(e)}")
 
-# Funcion para actualizar la licitacion y manejar la transición controlada (con validación de propietario)
 async def actualizar_licitacion(session: AsyncSession, licitacion_id: int, data: LicitacionUpdate, usuario_id: int) -> Licitacion:
     result = await session.execute(
         select(Licitacion)
@@ -137,8 +134,7 @@ async def actualizar_licitacion(session: AsyncSession, licitacion_id: int, data:
         await _disparar_correo_seguro(licitacion, nuevo_estado)
 
     return licitacion
-    
-# Funcion para cambiar el estado de la licitacion de forma directa (con validación de propietario)
+
 async def cambiar_estado_licitacion(session: AsyncSession, licitacion_id: int, nuevo_estado: str, usuario_id: int) -> Licitacion:
     result = await session.execute(
         select(Licitacion)
@@ -190,16 +186,13 @@ async def cambiar_estado_licitacion(session: AsyncSession, licitacion_id: int, n
 
     return licitacion
 
-# Funcion para agregar un producto a la licitacion (restringiendo al propietario y solo en borrador)
 async def agregar_producto_licitacion(session: AsyncSession, licitacion_id: int, data, usuario_current) -> LicitacionProducto:
-    # Validar entrada de números positivos estrictos
-    if data.cantidad <= 0 or data.precio_unitario < 0: # Dependiendo si el precio puede ser 0 o estrictamente > 0
+    if data.cantidad <= 0 or data.precio_unitario < 0:
         raise HTTPException(
             status_code=400,
             detail="La cantidad debe ser mayor a cero y el precio no puede ser negativo."
         )
 
-    # Cargamos la licitación junto con sus productos actuales
     licitacion_res = await session.execute(
         select(Licitacion)
         .options(selectinload(Licitacion.productos))
@@ -212,7 +205,6 @@ async def agregar_producto_licitacion(session: AsyncSession, licitacion_id: int,
     if not licitacion:
         raise HTTPException(status_code=404, detail="Licitación no encontrada o no tienes permisos")
 
-    # REGLA AJUSTADA: Solo se pueden agregar productos si está en estado 'borrador' o 'activa'
     estado_actual = str(licitacion.licitacion_estado or "").lower()
     if "borrador" not in estado_actual and "activa" not in estado_actual:
         raise HTTPException(
@@ -220,7 +212,6 @@ async def agregar_producto_licitacion(session: AsyncSession, licitacion_id: int,
             detail=f"No se pueden modificar productos en una licitación con estado '{licitacion.licitacion_estado}'."
         )
 
-    # REGLA DE PRESUPUESTO: Calcular el costo actual + el nuevo producto
     costo_actual_productos = sum(
         (p.licitacion_producto_cantidad * p.licitacion_producto_precio_unitario) 
         for p in licitacion.productos
@@ -260,7 +251,6 @@ async def agregar_producto_licitacion(session: AsyncSession, licitacion_id: int,
     await session.refresh(licitacion_producto)
     return licitacion_producto
 
-# Funcion para quitar un producto de la licitacion (con validación de propietario y solo en borrador)
 async def quitar_producto_licitacion(session: AsyncSession, licitacion_id: int, licitacion_producto_id: int, usuario_id: int):
     producto = await session.get(LicitacionProducto, licitacion_producto_id)
     if not producto or producto.licitacion_producto_licitacion_id != licitacion_id:
@@ -276,7 +266,6 @@ async def quitar_producto_licitacion(session: AsyncSession, licitacion_id: int, 
     if not licitacion:
         raise HTTPException(status_code=403, detail="No tienes permisos para modificar esta licitación")
 
-    # REGLA: Solo se pueden quitar productos si está en estado borrador
     if licitacion.licitacion_estado != "borrador":
         raise HTTPException(
             status_code=400,
@@ -286,7 +275,6 @@ async def quitar_producto_licitacion(session: AsyncSession, licitacion_id: int, 
     await session.delete(producto)
     await session.commit()
 
-# Funcion para subir documento a la licitacion (restringiendo al propietario)
 async def subir_documento_licitacion(session: AsyncSession, licitacion_id: int, contenido: bytes, filename: str, usuario_id: str) -> Licitacion:
     result = await session.execute(
         select(Licitacion).where(
@@ -305,7 +293,6 @@ async def subir_documento_licitacion(session: AsyncSession, licitacion_id: int, 
     await session.refresh(licitacion)
     return licitacion
 
-# Funcion para obtener el detalle de la licitacion, incluyendo cliente, productos e historial (restringido al propietario)
 async def obtener_licitacion_detalle(session: AsyncSession, licitacion_id: int, usuario_id: int) -> Licitacion:
     result = await session.execute(
         select(Licitacion)
@@ -325,9 +312,7 @@ async def obtener_licitacion_detalle(session: AsyncSession, licitacion_id: int, 
         raise HTTPException(status_code=404, detail="Licitación no encontrada o no tienes permisos")
     return licitacion
 
-#Eliminar una licitación (con validación de propietario)
-async def eliminar_licitacion(session, licitacion_id: int, usuario_id: int):
-    # 1. Buscar la licitación validando que pertenezca al usuario
+async def eliminar_licitacion(session: AsyncSession, licitacion_id: int, usuario_id: int):
     query = select(Licitacion).where(
         Licitacion.licitacion_id == licitacion_id,
         Licitacion.licitacion_usuario_id == usuario_id
@@ -341,7 +326,6 @@ async def eliminar_licitacion(session, licitacion_id: int, usuario_id: int):
             detail="Licitación no encontrada o no tienes permisos para eliminarla"
         )
 
-    # 2. Eliminar de la base de datos
     await session.delete(licitacion)
     await session.commit()
     

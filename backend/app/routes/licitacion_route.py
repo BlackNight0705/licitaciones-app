@@ -1,4 +1,3 @@
-# routes/licitacion_route.py
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -32,11 +31,9 @@ from backend.app.services.licitacion_service import (
     subir_documento_licitacion,
     obtener_licitacion_detalle
 )
-from backend.app.services.upload_service import subir_archivo_general
 
 router = APIRouter(prefix="/licitaciones", tags=["Licitaciones"])
 
-# Función auxiliar interna para registrar logs fácilmente
 async def registrar_accion(session: AsyncSession, usuario_id: int, accion: str, modulo: str, detalles: str):
     nuevo_log = AuditLog(
         usuario_id=usuario_id,
@@ -47,7 +44,6 @@ async def registrar_accion(session: AsyncSession, usuario_id: int, accion: str, 
     session.add(nuevo_log)
     await session.commit()
 
-# Ruta para crear una licitación
 @router.post("/", response_model=LicitacionResponse, status_code=status.HTTP_201_CREATED)
 async def crear_licitacion_route(
     data: LicitacionCreate,
@@ -66,7 +62,6 @@ async def crear_licitacion_route(
     
     return licitacion
 
-# Listado de licitaciones (Filtrado por usuario actual)
 @router.get("/", response_model=List[LicitacionResponse])
 async def listar_licitaciones_route(
     skip: int = 0,
@@ -93,7 +88,6 @@ async def listar_licitaciones_route(
     
     return licitaciones
 
-# Ruta para obtener el detalle de una licitación (Pasando el usuario_id)
 @router.get("/{licitacion_id}", response_model=LicitacionDetailResponse)
 async def obtener_detalle_licitacion_route(
     licitacion_id: int,
@@ -112,7 +106,6 @@ async def obtener_detalle_licitacion_route(
     
     return licitacion
 
-#cambiar estado de una licitación
 @router.post("/{licitacion_id}/estado/{nuevo_estado}", response_model=LicitacionResponse)
 async def cambiar_estado_route(
     licitacion_id: int,
@@ -132,7 +125,6 @@ async def cambiar_estado_route(
     
     return licitacion
 
-# Rutas para agregar y quitar productos de una licitación
 @router.post("/{licitacion_id}/productos", response_model=LicitacionProductoResponse)
 async def agregar_producto_route(
     licitacion_id: int, 
@@ -152,7 +144,6 @@ async def agregar_producto_route(
     
     return producto_licitacion
 
-#Quitar producto de una licitación
 @router.delete("/{licitacion_id}/productos/{licitacion_producto_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def quitar_producto_route(
     licitacion_id: int,
@@ -172,7 +163,6 @@ async def quitar_producto_route(
     
     return None
 
-# Rutas para subir documentos y obtener historial de transiciones
 @router.post("/{licitacion_id}/documento")
 async def subir_documento_route(
     licitacion_id: int,
@@ -203,7 +193,6 @@ async def subir_documento_route(
         "url": licitacion.licitacion_documento_url
     }
 
-#Obtener historial de transiciones de una licitación
 @router.get("/{licitacion_id}/historial", response_model=List[HistorialTransicionResponse])
 async def obtener_historial_licitacion_route(
     licitacion_id: int,
@@ -255,29 +244,13 @@ async def actualizar_licitacion_route(
     
     return licitacion
 
-#Eliminar licitación (con validación de usuario)
 @router.delete("/{licitacion_id}", status_code=status.HTTP_200_OK)
 async def eliminar_licitacion_route(
     licitacion_id: int, 
     session: AsyncSession = Depends(get_session), 
     usuario_actual: Usuario = Depends(obtener_usuario_actual)
 ):
-    result = await session.execute(
-        select(Licitacion).where(
-            Licitacion.licitacion_id == licitacion_id,
-            Licitacion.licitacion_usuario_id == usuario_actual.usuario_id
-        )
-    )
-    licitacion = result.scalars().first()
-    
-    if not licitacion:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="La licitación no existe o no tienes permisos para eliminarla."
-        )
-    
-    await session.delete(licitacion)
-    await session.commit()
+    await eliminar_licitacion(session, licitacion_id, usuario_actual.usuario_id)
     
     await registrar_accion(
         session=session,

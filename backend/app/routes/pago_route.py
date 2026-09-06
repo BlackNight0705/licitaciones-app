@@ -9,7 +9,6 @@ from backend.app.models.auditoria import AuditLog
 
 router = APIRouter(prefix="/pagos", tags=["Pagos"])
 
-# Función auxiliar interna para registrar logs fácilmente
 async def registrar_accion(session: AsyncSession, usuario_id: int, accion: str, modulo: str, detalles: str):
     nuevo_log = AuditLog(
         usuario_id=usuario_id,

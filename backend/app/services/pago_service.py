@@ -8,7 +8,6 @@ from backend.app.models.licitacion import Licitacion
 from backend.app.schemas.pago_schema import PagoCreate
 
 async def registrar_pago(session: AsyncSession, data: PagoCreate, usuario_id: int):
-    # Validar que la licitación exista, pertenezca al usuario y cargar sus productos
     result = await session.execute(
         select(Licitacion)
         .options(selectinload(Licitacion.productos))
@@ -21,7 +20,6 @@ async def registrar_pago(session: AsyncSession, data: PagoCreate, usuario_id: in
     if not licitacion:
         raise HTTPException(status_code=404, detail="Licitación no encontrada o no tienes permisos")
 
-    # REGLA: No se puede pagar una licitación que no tenga productos asociados
     if not licitacion.productos or len(licitacion.productos) == 0:
         raise HTTPException(
             status_code=400,
@@ -47,7 +45,6 @@ async def registrar_pago(session: AsyncSession, data: PagoCreate, usuario_id: in
             detail=f"El pago excede el saldo pendiente ({saldo_pendiente})."
         )
 
-    # Inyectamos obligatoriamente el usuario actual, fecha de hoy y los campos de auditoría requeridos
     pago_data = data.model_dump()
     pago_data["pago_usuario_id"] = usuario_id
     pago_data["pago_fecha_pago"] = date.today()
