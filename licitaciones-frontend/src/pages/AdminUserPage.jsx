@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import api from '../api/axiosClient';
-import UsuarioForm from "./UsuarioForm.jsx";
+import UsuarioForm from "./usuarioform.jsx";
 import ClienteForm from "./ClienteForm.jsx";
 import { Loader2 } from "lucide-react";
 
@@ -421,7 +421,7 @@ export default function AdminUsersPage() {
                 <input
                   type="text"
                   value={editingCliente.empresa ?? editingCliente.cliente_empresa ?? ""}
-                  onChange={(e) => setEditingCliente({ ...editingCliente, empresa: e.target.value, cliente_empresa: e.target.value })}
+                  onChange={(e) => setEditingCliente({ ...editingChange => ({ ...editingCliente, empresa: e.target.value, cliente_empresa: e.target.value }) })}
                   className="mt-1 block w-full border border-gray-300 rounded-md p-2 text-sm"
                 />
               </div>
