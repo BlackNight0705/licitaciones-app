@@ -88,7 +88,7 @@ export default function LicitacionDetailPage() {
     }
   }, [id]);
 
- const handleGuardarCambios = async (nuevoEstado = null) => {
+  const handleGuardarCambios = async (nuevoEstado = null) => {
     setIsSaving(true);
     try {
       const payload = {
@@ -167,10 +167,15 @@ export default function LicitacionDetailPage() {
   const esBorrador = licitacion.licitacion_estado === "borrador";
   const esActiva = licitacion.licitacion_estado === "activa";
   const esGanada = licitacion.licitacion_estado === "ganada" || licitacion.licitacion_estado === "adjudicada";
+  const esPerdida = licitacion.licitacion_estado === "perdida";
+  const esCobrada = licitacion.licitacion_estado === "cobrada" || esGanada; 
+  
+  // Regla: si ya está cobrada o perdida, no se debe permitir forzar a borrador
+  const permiteRegresarBorrador = esAdmin && !esBorrador && !esPerdida && !esCobrada;
   
   // El administrador tiene privilegios para modificar productos y ver formularios de edición aunque no esté en borrador
-  const permiteModificarProductos = esBorrador || esAdmin;
-  const mostrarFormularioEdicion = esBorrador || esAdmin || (esActiva && isEditingActive);
+  const permiteModificarProductos = esBorrador || (esActiva && esAdmin);
+  const mostrarFormularioEdicion = esBorrador || (esActiva && (esAdmin || isEditingActive));
 
   const renderBadgeFinanciero = () => {
     if (!esGanada) {
@@ -209,7 +214,7 @@ export default function LicitacionDetailPage() {
         </Link>
 
         <div className="flex items-center gap-3">
-          {(esActiva || esAdmin) && !isEditingActive && (
+          {esActiva && !isEditingActive && (
             <button
               type="button"
               onClick={() => setIsEditingActive(true)}
@@ -370,8 +375,8 @@ export default function LicitacionDetailPage() {
                     </button>
                   )}
 
-                  {/* Botón exclusivo para que el Administrador regrese una licitación a estado borrador */}
-                  {esAdmin && !esBorrador && (
+                  {/* Botón exclusivo para que el Administrador regrese una licitación a estado borrador (solo si está activa) */}
+                  {permiteRegresarBorrador && (
                     <div className="w-full pt-2">
                       {!isConfirmingBorrador ? (
                         <button
