@@ -88,14 +88,17 @@ export default function LicitacionDetailPage() {
     }
   }, [id]);
 
-  const handleGuardarCambios = async (nuevoEstado = null) => {
+ const handleGuardarCambios = async (nuevoEstado = null) => {
     setIsSaving(true);
     try {
       const payload = {
-        ...formData,
+        licitacion_titulo: formData.licitacion_titulo,
+        licitacion_descripcion: formData.licitacion_descripcion,
         licitacion_presupuesto_maximo: formData.licitacion_presupuesto_maximo !== "" 
           ? parseFloat(formData.licitacion_presupuesto_maximo) 
           : 0,
+        licitacion_fecha_limite: formData.licitacion_fecha_limite ? `${formData.licitacion_fecha_limite}T00:00:00` : null,
+        licitacion_cliente_id: formData.licitacion_cliente_id !== "" ? Number(formData.licitacion_cliente_id) : null,
         ...(nuevoEstado && { licitacion_estado: nuevoEstado })
       };
 
