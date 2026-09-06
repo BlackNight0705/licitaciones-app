@@ -4,7 +4,7 @@ import DashboardLayout from "./components/layout/DashboardLayout.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
 import DashboardPage from "./pages/DashboardPage.jsx";
 import LicitacionDetailPage from "./pages/LicitacionDetailPage.jsx";
-import AdminUsersPage from "./pages/AdminUsersPage.jsx";
+import AdminUsersPage from "./pages/AdminUserPage.jsx";
 import AdminAuditPage from "./pages/AdminAuditPage.jsx";
 
 export default function App() {
