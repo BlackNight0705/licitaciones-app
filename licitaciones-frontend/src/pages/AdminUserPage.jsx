@@ -78,22 +78,25 @@ export default function AdminUsersPage() {
     }
   };
 
-  const handleDeleteUsuario = async (u) => {
+  const handleToggleEstadoUsuario = async (u) => {
     const id = u.id ?? u.usuario_id;
     const email = u.email ?? u.usuario_email;
-    if (!window.confirm(`¿Estás seguro de eliminar al usuario ${email}?`)) return;
+    const activoActual = u.activo ?? u.usuario_estado ?? true;
+    const accionTexto = activoActual ? "¿Estás seguro de desactivar" : "¿Estás seguro de activar";
+    
+    if (!window.confirm(`${accionTexto} al usuario ${email}?`)) return;
 
     try {
-      await api.delete(`/admin/usuarios/${id}`);
-      setModalMessage("Usuario eliminado correctamente.");
+      await api.patch(`/admin/usuarios/${id}/desactivar`);
+      setModalMessage(`Estado del usuario actualizado correctamente.`);
       fetchData();
     } catch (err) {
-      alert(err.response?.data?.detail || "Error al eliminar el usuario.");
+      alert(err.response?.data?.detail || "Error al cambiar el estado del usuario.");
     }
   };
 
   // --- ACCIONES DE CLIENTE ---
- const handleUpdateClienteSubmit = async (e) => {
+  const handleUpdateClienteSubmit = async (e) => {
     e.preventDefault();
     const id = editingCliente.id ?? editingCliente.cliente_id;
     try {
@@ -112,17 +115,21 @@ export default function AdminUsersPage() {
       alert(err.response?.data?.detail || "Error al actualizar el cliente.");
     }
   };
-  const handleDeleteCliente = async (c) => {
+
+  const handleToggleEstadoCliente = async (c) => {
     const id = c.id ?? c.cliente_id;
     const nombre = c.nombre ?? c.cliente_nombre;
-    if (!window.confirm(`¿Estás seguro de eliminar al cliente ${nombre}?`)) return;
+    const activoActual = c.activo ?? c.cliente_estado ?? true;
+    const accionTexto = activoActual ? "¿Estás seguro de desactivar" : "¿Estás seguro de activar";
+
+    if (!window.confirm(`${accionTexto} al cliente ${nombre}?`)) return;
 
     try {
-      await api.delete(`/admin/clientes/${id}`);
-      setModalMessage("Cliente eliminado correctamente.");
+      await api.patch(`/admin/clientes/${id}/estado`);
+      setModalMessage(`Estado del cliente actualizado correctamente.`);
       fetchData();
     } catch (err) {
-      alert(err.response?.data?.detail || "Error al eliminar el cliente.");
+      alert(err.response?.data?.detail || "Error al cambiar el estado del cliente.");
     }
   };
 
@@ -175,42 +182,57 @@ export default function AdminUsersPage() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Correo</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rol</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {usuarios.length === 0 ? (
                 <tr>
-                  <td colSpan="4" className="px-6 py-4 text-center text-sm text-gray-500">No hay usuarios registrados.</td>
+                  <td colSpan="5" className="px-6 py-4 text-center text-sm text-gray-500">No hay usuarios registrados.</td>
                 </tr>
               ) : (
-                usuarios.map((u) => (
-                  <tr key={u.id ?? u.usuario_id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{u.id ?? u.usuario_id}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{u.email ?? u.usuario_email}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <span className={`px-2.5 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        (u.rol ?? u.usuario_rol) === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-green-100 text-green-800'
-                      }`}>
-                        {u.rol ?? u.usuario_rol}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                      <button
-                        onClick={() => setEditingUsuario({ ...u })}
-                        className="text-blue-600 hover:text-blue-900 bg-blue-50 px-3 py-1 rounded"
-                      >
-                        Editar
-                      </button>
-                      <button
-                        onClick={() => handleDeleteUsuario(u)}
-                        className="text-red-600 hover:text-red-900 bg-red-50 px-3 py-1 rounded"
-                      >
-                        Eliminar
-                      </button>
-                    </td>
-                  </tr>
-                ))
+                usuarios.map((u) => {
+                  const estaActivo = u.activo ?? u.usuario_estado ?? true;
+                  return (
+                    <tr key={u.id ?? u.usuario_id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{u.id ?? u.usuario_id}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{u.email ?? u.usuario_email}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        <span className={`px-2.5 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                          (u.rol ?? u.usuario_rol) === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-green-100 text-green-800'
+                        }`}>
+                          {u.rol ?? u.usuario_rol}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        <span className={`px-2.5 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                          estaActivo ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          {estaActivo ? 'Activo' : 'Inactivo'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                        <button
+                          onClick={() => setEditingUsuario({ ...u })}
+                          className="text-blue-600 hover:text-blue-900 bg-blue-50 px-3 py-1 rounded"
+                        >
+                          Editar
+                        </button>
+                        <button
+                          onClick={() => handleToggleEstadoUsuario(u)}
+                          className={`${
+                            estaActivo 
+                              ? 'text-amber-600 hover:text-amber-900 bg-amber-50' 
+                              : 'text-emerald-600 hover:text-emerald-900 bg-emerald-50'
+                          } px-3 py-1 rounded`}
+                        >
+                          {estaActivo ? 'Desactivar' : 'Activar'}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -220,35 +242,50 @@ export default function AdminUsersPage() {
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {clientes.length === 0 ? (
                 <tr>
-                  <td colSpan="3" className="px-6 py-4 text-center text-sm text-gray-500">No hay clientes registrados.</td>
+                  <td colSpan="4" className="px-6 py-4 text-center text-sm text-gray-500">No hay clientes registrados.</td>
                 </tr>
               ) : (
-                clientes.map((c) => (
-                  <tr key={c.id ?? c.cliente_id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{c.id ?? c.cliente_id}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{c.nombre ?? c.cliente_nombre}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                      <button
-                        onClick={() => setEditingCliente({ ...c })}
-                        className="text-blue-600 hover:text-blue-900 bg-blue-50 px-3 py-1 rounded"
-                      >
-                        Editar
-                      </button>
-                      <button
-                        onClick={() => handleDeleteCliente(c)}
-                        className="text-red-600 hover:text-red-900 bg-red-50 px-3 py-1 rounded"
-                      >
-                        Eliminar
-                      </button>
-                    </td>
-                  </tr>
-                ))
+                clientes.map((c) => {
+                  const estaActivo = c.activo ?? c.cliente_estado ?? true;
+                  return (
+                    <tr key={c.id ?? c.cliente_id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{c.id ?? c.cliente_id}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{c.nombre ?? c.cliente_nombre}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        <span className={`px-2.5 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                          estaActivo ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          {estaActivo ? 'Activo' : 'Inactivo'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                        <button
+                          onClick={() => setEditingCliente({ ...c })}
+                          className="text-blue-600 hover:text-blue-900 bg-blue-50 px-3 py-1 rounded"
+                        >
+                          Editar
+                        </button>
+                        <button
+                          onClick={() => handleToggleEstadoCliente(c)}
+                          className={`${
+                            estaActivo 
+                              ? 'text-amber-600 hover:text-amber-900 bg-amber-50' 
+                              : 'text-emerald-600 hover:text-emerald-900 bg-emerald-50'
+                          } px-3 py-1 rounded`}
+                        >
+                          {estaActivo ? 'Desactivar' : 'Activar'}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
