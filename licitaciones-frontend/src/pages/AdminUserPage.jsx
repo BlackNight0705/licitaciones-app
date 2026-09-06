@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
 import api from '../api/axiosClient';
+import UsuarioForm from "./UsuarioForm.jsx";
+import ClienteForm from "./ClienteForm.jsx";
+import { Loader2 } from "lucide-react";
 
 export default function AdminUsersPage() {
   const [activeTab, setActiveTab] = useState("usuarios"); // "usuarios" o "clientes"
@@ -12,6 +15,10 @@ export default function AdminUsersPage() {
   const [editingUsuario, setEditingUsuario] = useState(null);
   const [editingCliente, setEditingCliente] = useState(null);
   const [modalMessage, setModalMessage] = useState("");
+
+  // Estados para los modales de creación
+  const [isUsuarioModalOpen, setIsUsuarioModalOpen] = useState(false);
+  const [isClienteModalOpen, setIsClienteModalOpen] = useState(false);
 
   const fetchData = async () => {
     setLoading(true);
@@ -140,6 +147,23 @@ export default function AdminUsersPage() {
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Gestión de Usuarios y Clientes</h1>
+        <div>
+          {activeTab === "usuarios" ? (
+            <button
+              onClick={() => setIsUsuarioModalOpen(true)}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition"
+            >
+              Registrar usuario
+            </button>
+          ) : (
+            <button
+              onClick={() => setIsClienteModalOpen(true)}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition"
+            >
+              Registrar cliente
+            </button>
+          )}
+        </div>
       </div>
 
       {modalMessage && (
@@ -420,6 +444,25 @@ export default function AdminUsersPage() {
           </div>
         </div>
       )}
+
+      {/* MODALES DE CREACIÓN */}
+      <UsuarioForm
+        isOpen={isUsuarioModalOpen}
+        onClose={() => setIsUsuarioModalOpen(false)}
+        onCreated={() => {
+          setModalMessage("Usuario registrado correctamente.");
+          fetchData();
+        }}
+      />
+
+      <ClienteForm
+        isOpen={isClienteModalOpen}
+        onClose={() => setIsClienteModalOpen(false)}
+        onCreated={() => {
+          setModalMessage("Cliente registrado correctamente.");
+          fetchData();
+        }}
+      />
     </div>
   );
 }
