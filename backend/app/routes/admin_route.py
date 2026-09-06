@@ -9,7 +9,7 @@ from backend.app.models.usuario import Usuario
 from backend.app.models.auditoria import AuditLog
 from backend.app.core.security import obtener_usuario_actual
 
-router = APIRouter(prefix="/api/admin", tags=["Administración"])
+router = APIRouter(prefix="/admin", tags=["Administración"])
 
 # Dependencia para verificar que el usuario actual sea Administrador
 async def verificar_rol_admin(current_user: Usuario = Depends(obtener_usuario_actual)):
