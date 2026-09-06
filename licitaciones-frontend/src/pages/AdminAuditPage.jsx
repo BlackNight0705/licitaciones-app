@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import api from '../../api/axiosClient';
+import api from '../api/axiosClient';
 
 export default function AdminAuditPage() {
   const [logs, setLogs] = useState([]);
