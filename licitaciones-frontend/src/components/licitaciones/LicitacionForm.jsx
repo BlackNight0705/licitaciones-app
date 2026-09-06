@@ -47,7 +47,7 @@ export default function LicitacionForm({ isOpen, onClose, onCreated }) {
     onClose();
   };
 
-  const handleSubmit = async (e) => {
+const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
     setError(null);
@@ -55,7 +55,7 @@ export default function LicitacionForm({ isOpen, onClose, onCreated }) {
       const payload = {
         licitacion_titulo: form.titulo,
         licitacion_descripcion: form.descripcion,
-        licitacion_entidad: form.entidad, // <--- ¡Añadido para que coincida con el input!
+        licitacion_entidad: form.entidad,
         licitacion_presupuesto_maximo: form.presupuesto ? Number(form.presupuesto) : 0,
         licitacion_fecha_limite: form.fecha_cierre ? `${form.fecha_cierre}T00:00:00` : null,
         licitacion_estado: "borrador",
@@ -65,12 +65,7 @@ export default function LicitacionForm({ isOpen, onClose, onCreated }) {
       onCreated?.(nueva);
       handleClose();
     } catch (err) {
-      const detail = err.response?.data?.detail;
-      if (Array.isArray(detail)) {
-        setError(detail.map(d => `${d.loc.join('.')}: ${d.msg}`).join(', '));
-      } else {
-        setError(detail || "No se pudo crear la licitación.");
-      }
+      setError(err.message || "No se pudo crear la licitación.");
     } finally {
       setIsSubmitting(false);
     }
