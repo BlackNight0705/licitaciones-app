@@ -1,11 +1,12 @@
 import { useState,useEffect } from "react";
-import { Outlet } from "react-router-dom";
+import { Outlet,useNavigate } from "react-router-dom";
 import Sidebar from "./Sidebar.jsx";
 import Navbar from "./Navbar.jsx";
 import axiosClient from '../../api/axiosClient.js'; // Asegúrate de que la ruta sea correcta según tu estructura de carpetas
 
 export default function DashboardLayout({ title }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const navigate = useNavigate();
 
   // Intervalo para refrescar el token cada 20 minutos
   useEffect(() => {
