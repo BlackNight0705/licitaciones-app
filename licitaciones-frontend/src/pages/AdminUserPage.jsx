@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import api from '../api/axiosClient';
-import UsuarioForm from "./components/usuario//UsuarioForm.jsx";
-import ClienteForm from "./components/cliente/ClienteForm.jsx";
+import UsuarioForm from "../components/usuario/UsuarioForm.jsx";
+import UsuarioForm from "../components/cliente/ClienteForm.jsx";
 
 export default function AdminUsersPage() {
   const [activeTab, setActiveTab] = useState("usuarios"); // "usuarios" o "clientes"
