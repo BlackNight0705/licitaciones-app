@@ -45,7 +45,6 @@ export default function LicitacionDetailPage() {
     setIsLoading(true);
     setError(null);
     try {
-      // Cargamos la licitación de forma prioritaria
       const licData = await getLicitacion(id);
       if (!licData) {
         throw new Error("No se encontró la información de la licitación.");
@@ -60,7 +59,6 @@ export default function LicitacionDetailPage() {
         licitacion_cliente_id: licData.licitacion_cliente_id || "",
       });
 
-      // Cargamos el historial de forma independiente para que un fallo aquí no rompa la página principal
       try {
         const histData = await getHistorial(id);
         const historialArray = Array.isArray(histData) ? histData : (histData?.items || []);
@@ -159,12 +157,13 @@ export default function LicitacionDetailPage() {
 
   const esBorrador = licitacion.licitacion_estado === "borrador";
   const esActiva = licitacion.licitacion_estado === "activa";
+  const esGanada = licitacion.licitacion_estado === "ganada" || licitacion.licitacion_estado === "adjudicada";
   
   const permiteModificarProductos = esBorrador;
   const mostrarFormularioEdicion = esBorrador || (esActiva && isEditingActive);
 
   const renderBadgeFinanciero = () => {
-    if (licitacion.licitacion_estado !== "ganada" && licitacion.licitacion_estado !== "adjudicada") {
+    if (!esGanada) {
       return null;
     }
 
@@ -452,7 +451,10 @@ export default function LicitacionDetailPage() {
         </div>
       </div>
 
-      <SeccionPagosModal licitacion={licitacion} onPagoExitoso={loadData} />
+      {/* Solo se muestra la sección de pagos si la licitación está ganada (o adjudicada) */}
+      {esGanada && (
+        <SeccionPagosModal licitacion={licitacion} onPagoExitoso={loadData} />
+      )}
 
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="card p-6">
