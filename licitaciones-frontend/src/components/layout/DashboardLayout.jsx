@@ -10,7 +10,7 @@ export default function DashboardLayout({ title }) {
 
   // Intervalo para refrescar el token cada 20 minutos
   useEffect(() => {
-    const REFRESH_INTERVAL = 2 * 60 * 1000; 
+    const REFRESH_INTERVAL = 20 * 60 * 1000; 
 
     const intervalId = setInterval(async () => {
       try {

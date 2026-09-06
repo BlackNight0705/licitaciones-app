@@ -11,6 +11,16 @@ from backend.app.models.auditoria import AuditLog
 
 router = APIRouter(tags=["Autenticación"])
 
+async def registrar_accion(session: AsyncSession, usuario_id: int, accion: str, modulo: str, detalles: str):
+    nuevo_log = AuditLog(
+        usuario_id=usuario_id,
+        accion=accion,
+        modulo=modulo,
+        detalles=detalles
+    )
+    session.add(nuevo_log)
+    await session.commit()
+    
 @router.post("/login")
 async def login(
     response: Response, 
