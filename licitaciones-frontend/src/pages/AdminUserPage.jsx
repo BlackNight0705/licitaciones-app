@@ -16,8 +16,8 @@ export default function AdminUsersPage() {
       try {
         // Ejecutamos ambas peticiones en paralelo de forma independiente usando allSettled
         const [resUsuarios, resClientes] = await Promise.allSettled([
-          api.get("/usuario/"), 
-          api.get("/cliente/")
+          api.get("/admin/usuarios/"), 
+          api.get("/admin/clientes/")
         ]);
         
         // Procesamos usuarios de forma segura

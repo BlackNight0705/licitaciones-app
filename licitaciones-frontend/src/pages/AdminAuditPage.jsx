@@ -11,7 +11,7 @@ export default function AdminAuditPage() {
       try {
         setLoading(true);
         setError(null);
-        const response = await api.get("/api/admin/auditorias");
+        const response = await api.get("/admin/auditorias");
         
         // Manejo defensivo: nos aseguramos de que sea un array sin importar si viene directo o paginado
         const data = response.data;
