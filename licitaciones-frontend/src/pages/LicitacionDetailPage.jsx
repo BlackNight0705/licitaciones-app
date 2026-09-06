@@ -25,6 +25,11 @@ export default function LicitacionDetailPage() {
   const [isConfirmingPerdida, setIsConfirmingPerdida] = useState(false);
   const [isConfirmingGanada, setIsConfirmingGanada] = useState(false);
   const [isConfirmingEliminar, setIsConfirmingEliminar] = useState(false);
+  const [isConfirmingBorrador, setIsConfirmingBorrador] = useState(false);
+
+  // Detección de rol del usuario actual
+  const usuarioRol = localStorage.getItem("usuario_rol") || "user";
+  const esAdmin = usuarioRol === "admin";
 
   const [formData, setFormData] = useState({
     licitacion_titulo: "",
@@ -102,6 +107,7 @@ export default function LicitacionDetailPage() {
         activa: "¡Licitación activada con éxito!",
         ganada: "¡Felicitaciones! Licitación marcada como ganada.",
         perdida: "Licitación marcada como perdida.",
+        borrador: "Licitación devuelta a estado borrador.",
         default: "Cambios guardados correctamente."
       };
       
@@ -159,8 +165,9 @@ export default function LicitacionDetailPage() {
   const esActiva = licitacion.licitacion_estado === "activa";
   const esGanada = licitacion.licitacion_estado === "ganada" || licitacion.licitacion_estado === "adjudicada";
   
-  const permiteModificarProductos = esBorrador;
-  const mostrarFormularioEdicion = esBorrador || (esActiva && isEditingActive);
+  // El administrador tiene privilegios para modificar productos y ver formularios de edición aunque no esté en borrador
+  const permiteModificarProductos = esBorrador || esAdmin;
+  const mostrarFormularioEdicion = esBorrador || esAdmin || (esActiva && isEditingActive);
 
   const renderBadgeFinanciero = () => {
     if (!esGanada) {
@@ -199,7 +206,7 @@ export default function LicitacionDetailPage() {
         </Link>
 
         <div className="flex items-center gap-3">
-          {esActiva && !isEditingActive && (
+          {(esActiva || esAdmin) && !isEditingActive && (
             <button
               type="button"
               onClick={() => setIsEditingActive(true)}
@@ -279,9 +286,9 @@ export default function LicitacionDetailPage() {
               <div className="space-y-3 pt-4 border-t border-brand-100">
                 <div className="flex justify-between items-center">
                   <h3 className="text-sm font-semibold text-ink-800">
-                    {esBorrador ? "Editar información de la licitación" : "Editando licitación activa"}
+                    {esBorrador ? "Editar información de la licitación" : "Editando licitación"}
                   </h3>
-                  {esActiva && (
+                  {!esBorrador && (
                     <button
                       type="button"
                       onClick={() => {
@@ -358,6 +365,47 @@ export default function LicitacionDetailPage() {
                     >
                       Guardar y Activar
                     </button>
+                  )}
+
+                  {/* Botón exclusivo para que el Administrador regrese una licitación a estado borrador */}
+                  {esAdmin && !esBorrador && (
+                    <div className="w-full pt-2">
+                      {!isConfirmingBorrador ? (
+                        <button
+                          type="button"
+                          disabled={isSaving}
+                          onClick={() => setIsConfirmingBorrador(true)}
+                          className="bg-amber-600 hover:bg-amber-700 text-white font-medium px-3 py-2 rounded text-xs flex items-center gap-1.5 transition-colors"
+                        >
+                          ⚠️ Forzar regreso a Borrador (Admin)
+                        </button>
+                      ) : (
+                        <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs space-y-2 w-full">
+                          <p className="text-amber-800 font-medium">¿Estás seguro de regresar esta licitación a estado Borrador?</p>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              disabled={isSaving}
+                              onClick={async () => {
+                                await handleGuardarCambios("borrador");
+                                setIsConfirmingBorrador(false);
+                              }}
+                              className="bg-amber-600 hover:bg-amber-700 text-white font-medium px-3 py-1.5 rounded transition-colors"
+                            >
+                              Sí, regresar a borrador
+                            </button>
+                            <button
+                              type="button"
+                              disabled={isSaving}
+                              onClick={() => setIsConfirmingBorrador(false)}
+                              className="bg-white border border-gray-300 text-ink-700 hover:bg-gray-50 font-medium px-3 py-1.5 rounded"
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   )}
 
                   {esActiva && (
@@ -451,7 +499,6 @@ export default function LicitacionDetailPage() {
         </div>
       </div>
 
-      {/* Solo se muestra la sección de pagos si la licitación está ganada (o adjudicada) */}
       {esGanada && (
         <SeccionPagosModal licitacion={licitacion} onPagoExitoso={loadData} />
       )}
