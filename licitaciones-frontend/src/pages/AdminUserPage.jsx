@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 import api from '../api/axiosClient';
-import UsuarioForm from "./usuarioform.jsx";
+import UsuarioForm from "./UsuarioForm.jsx";
 import ClienteForm from "./ClienteForm.jsx";
-import { Loader2 } from "lucide-react";
 
 export default function AdminUsersPage() {
   const [activeTab, setActiveTab] = useState("usuarios"); // "usuarios" o "clientes"
