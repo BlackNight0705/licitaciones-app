@@ -7,7 +7,7 @@ from pydantic import BaseModel, EmailStr
 from backend.app.core.database import get_session
 from backend.app.models.cliente import Cliente
 from backend.app.models.usuario import Usuario
-from backend.app.core.security import verificar_rol_admin
+from backend.app.core.security import verificar_rol_admin, obtener_usuario_actual
 from backend.app.models.auditoria import AuditLog
 
 router = APIRouter(prefix="/cliente", tags=["Cliente"])
@@ -45,9 +45,31 @@ async def crear_cliente(
     session.add(nuevo_cliente)
     await session.commit()
     await session.refresh(nuevo_cliente)
+
+    await registrar_accion(
+        session=session,
+        usuario_id=admin_actual.usuario_id,
+        accion="CREAR",
+        modulo="Clientes",
+        detalles=f"El administrador creó el cliente {nuevo_cliente.cliente_nombre}."
+    )
+
     return nuevo_cliente
 
 @router.get("/")
-async def listar_clientes(session: AsyncSession = Depends(get_session)):
+async def listar_clientes(
+    session: AsyncSession = Depends(get_session),
+    current_user: Usuario = Depends(obtener_usuario_actual)
+):
     resultado = await session.execute(select(Cliente))
-    return resultado.scalars().all()
+    clientes = resultado.scalars().all()
+
+    await registrar_accion(
+        session=session,
+        usuario_id=current_user.usuario_id,
+        accion="CONSULTA",
+        modulo="Clientes",
+        detalles=f"El usuario {current_user.usuario_email} consultó el listado de clientes."
+    )
+
+    return clientes

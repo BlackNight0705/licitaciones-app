@@ -26,4 +26,14 @@ async def registrar_pago_route(
     session: AsyncSession = Depends(get_session),
     usuario_actual: Usuario = Depends(obtener_usuario_actual)
 ):
-    return await registrar_pago(session, data, usuario_actual.usuario_id)
+    pago = await registrar_pago(session, data, usuario_actual.usuario_id)
+    
+    await registrar_accion(
+        session=session,
+        usuario_id=usuario_actual.usuario_id,
+        accion="CREAR",
+        modulo="Pagos",
+        detalles=f"El usuario registró un nuevo pago asociado a la licitación o concepto correspondiente."
+    )
+    
+    return pago

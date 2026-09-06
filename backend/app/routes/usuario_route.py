@@ -61,6 +61,14 @@ async def crear_usuario(
     await session.commit()
     await session.refresh(nuevo_usuario)
 
+    await registrar_accion(
+        session=session,
+        usuario_id=admin_actual.usuario_id,
+        accion="CREAR",
+        modulo="Usuarios",
+        detalles=f"El administrador creó el usuario {nuevo_usuario.usuario_email} con rol {nuevo_usuario.usuario_rol}."
+    )
+
     return {
         "mensaje": "Usuario creado exitosamente",
         "usuario_id": nuevo_usuario.usuario_id,

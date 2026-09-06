@@ -6,7 +6,7 @@ from sqlalchemy.future import select
 
 from backend.app.core.database import get_session
 from backend.app.models.usuario import Usuario
-from backend.app.core.security import verificar_password, crear_access_token, decodificar_token # Asegúrate de tener una función para decodificar/verificar tokens
+from backend.app.core.security import verificar_password, crear_access_token, decodificar_token
 from backend.app.models.auditoria import AuditLog 
 
 router = APIRouter(tags=["Autenticación"])
@@ -20,10 +20,10 @@ async def registrar_accion(session: AsyncSession, usuario_id: int, accion: str, 
     )
     session.add(nuevo_log)
     await session.commit()
-    
+
 @router.post("/login")
 async def login(
-    response: Response, 
+    response: Response,  # <--- 1. Inyectamos el objeto Response de FastAPI
     form_data: OAuth2PasswordRequestForm = Depends(),
     session: AsyncSession = Depends(get_session)
 ):
@@ -47,14 +47,14 @@ async def login(
     refresh_token_expires = timedelta(days=7)
     refresh_token = crear_access_token(data={"sub": str(usuario.usuario_id)}, expires_delta=refresh_token_expires)
 
-    # 3. Guardamos ambos en cookies HttpOnly separadas
+    # <--- 2. Guardamos ambos en cookies HttpOnly separadas
     response.set_cookie(
         key="access_token",
         value=access_token,
         httponly=True,
-        secure=True, # True en producción con HTTPS, False en local si no usas HTTPS
+        secure=True, 
         samesite="none",
-        max_age=900 # 15 minutos en segundos
+        max_age=900 
     )
 
     response.set_cookie(
@@ -63,9 +63,18 @@ async def login(
         httponly=True,
         secure=True,
         samesite="none",
-        max_age=604800 # 7 días en segundos
+        max_age=604800 
     )
 
+    await registrar_accion(
+        session=session,
+        usuario_id=usuario.usuario_id,
+        accion="LOGIN",
+        modulo="Autenticación",
+        detalles=f"El usuario {usuario.usuario_email} inició sesión exitosamente."
+    )
+
+    # <--- 3. Devolvemos solo los datos informativos del usuario
     return {
         "mensaje": "Login exitoso",
         "usuario_id": usuario.usuario_id,
@@ -75,7 +84,7 @@ async def login(
 
 @router.post("/auth/refresh")
 async def refresh_token(
-    response: Response,  
+    response: Response,  # <--- 1. Inyectamos la instancia de Response correctamente
     refresh_token: str = Cookie(None), # <---- Leemos la cookie del refresh token directamente
     session: AsyncSession = Depends(get_session)
 ):
@@ -90,7 +99,7 @@ async def refresh_token(
 
     try:
         # Decodificamos el refresh token para obtener el ID del usuario
-        payload = decodificar_token(refresh_token) # Función que valida la firma del token
+        payload = decodificar_token(refresh_token) 
         user_id: str = payload.get("sub")
         if not user_id:
             raise HTTPException(status_code=401, detail="Token inválido")
@@ -111,7 +120,7 @@ async def refresh_token(
         expires_delta=access_token_expires
     )
     
-    # Actualizamos únicamente la cookie del access_token
+    # <--- 2. Actualizamos la cookie HttpOnly con el nuevo token fresco
     response.set_cookie(
         key="access_token",
         value=nuevo_access_token,
@@ -121,8 +130,26 @@ async def refresh_token(
         max_age=900
     )
     
+    await registrar_accion(
+        session=session,
+        usuario_id=usuario.usuario_id,
+        accion="REFRESH",
+        modulo="Autenticación",
+        detalles=f"Se renovó el token de acceso para el usuario {usuario.usuario_email}."
+    )
+
     return {
         "mensaje": "Token renovado exitosamente",
         "usuario_id": usuario.usuario_id,
         "usuario_email": usuario.usuario_email
     }
+
+@router.post("/logout")
+async def logout(response: Response):
+    # Borramos la cookie del access_token sobrescribiéndola vacía y expirada
+    response.delete_cookie(key="access_token", samesite="none", secure=True)
+    
+    # Borramos también el refresh_token
+    response.delete_cookie(key="refresh_token", samesite="none", secure=True)
+    
+    return {"mensaje": "Sesión cerrada exitosamente"}
