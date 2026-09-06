@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import api from '../api/axiosClient';
 import UsuarioForm from "../components/usuario/UsuarioForm.jsx";
-import UsuarioForm from "../components/cliente/ClienteForm.jsx";
+import ClienteForm from "../components/cliente/ClienteForm.jsx";
 
 export default function AdminUsersPage() {
   const [activeTab, setActiveTab] = useState("usuarios"); // "usuarios" o "clientes"
@@ -420,7 +420,7 @@ export default function AdminUsersPage() {
                 <input
                   type="text"
                   value={editingCliente.empresa ?? editingCliente.cliente_empresa ?? ""}
-                  onChange={(e) => setEditingCliente({ ...editingChange => ({ ...editingCliente, empresa: e.target.value, cliente_empresa: e.target.value }) })}
+                  onChange={(e) => setEditingCliente({ ...editingCliente, empresa: e.target.value, cliente_empresa: e.target.value })}
                   className="mt-1 block w-full border border-gray-300 rounded-md p-2 text-sm"
                 />
               </div>
