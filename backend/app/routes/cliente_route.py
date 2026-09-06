@@ -8,8 +8,20 @@ from backend.app.core.database import get_session
 from backend.app.models.cliente import Cliente
 from backend.app.models.usuario import Usuario
 from backend.app.core.security import verificar_rol_admin
+from backend.app.models.auditoria import AuditLog
 
 router = APIRouter(prefix="/cliente", tags=["Cliente"])
+
+# Función auxiliar interna para registrar logs fácilmente
+async def registrar_accion(session: AsyncSession, usuario_id: int, accion: str, modulo: str, detalles: str):
+    nuevo_log = AuditLog(
+        usuario_id=usuario_id,
+        accion=accion,
+        modulo=modulo,
+        detalles=detalles
+    )
+    session.add(nuevo_log)
+    await session.commit()
 
 class ClienteCreate(BaseModel):
     cliente_nombre: str

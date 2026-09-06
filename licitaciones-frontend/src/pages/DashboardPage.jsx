@@ -6,8 +6,6 @@ import LicitacionForm from "../components/licitaciones/LicitacionForm.jsx";
 import UsuarioForm from "../components/usuario/UsuarioForm.jsx";
 import ClienteForm from "../components/cliente/ClienteForm.jsx";
 import { getLicitaciones, eliminarLicitacion } from "../api/licitaciones.js";
-// Asegúrate de importar tu función para eliminar si la tienes en la API, o haz el fetch directamente:
-// import { getLicitaciones, deleteLicitacion } from "../api/licitaciones.js";
 
 export default function DashboardPage() {
   const [licitaciones, setLicitaciones] = useState([]);

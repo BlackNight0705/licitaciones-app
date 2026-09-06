@@ -20,6 +20,7 @@ from backend.app.schemas.licitacion_producto_schema import (
     LicitacionProductoResponse
 )
 from backend.app.schemas.historial_transicion_schema import HistorialTransicionResponse
+from backend.app.models.auditoria import AuditLog
 from backend.app.models.historial_transicion import HistorialTransicion
 from backend.app.services.licitacion_service import (
     actualizar_licitacion,
@@ -34,6 +35,17 @@ from backend.app.services.licitacion_service import (
 from backend.app.services.upload_service import subir_archivo_general
 
 router = APIRouter(prefix="/licitaciones", tags=["Licitaciones"])
+
+# Función auxiliar interna para registrar logs fácilmente
+async def registrar_accion(session: AsyncSession, usuario_id: int, accion: str, modulo: str, detalles: str):
+    nuevo_log = AuditLog(
+        usuario_id=usuario_id,
+        accion=accion,
+        modulo=modulo,
+        detalles=detalles
+    )
+    session.add(nuevo_log)
+    await session.commit()
 
 # Ruta para crear una licitación
 @router.post("/", response_model=LicitacionResponse, status_code=status.HTTP_201_CREATED)
@@ -55,7 +67,7 @@ async def listar_licitaciones_route(
     result = await session.execute(
         select(Licitacion)
         .options(selectinload(Licitacion.cliente))
-        .where(Licitacion.licitacion_usuario_id == usuario_actual.usuario_id) # <--- ¡Filtro clave añadido!
+        .where(Licitacion.licitacion_usuario_id == usuario_actual.usuario_id)
         .offset(skip)
         .limit(limit)
     )

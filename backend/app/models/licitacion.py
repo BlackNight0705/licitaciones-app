@@ -1,5 +1,5 @@
 from sqlalchemy import Column, DateTime, Integer, Boolean, String, Float, Date, ForeignKey
-from .auditoria import AuditMixin
+from .auditMixin import AuditMixin
 from backend.app.core.database import Base
 from sqlalchemy.orm import relationship
 

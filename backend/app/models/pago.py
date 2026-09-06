@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, Float, Date, ForeignKey, String
-from .auditoria import AuditMixin
+from .auditMixin import AuditMixin
 from backend.app.core.database import Base
 
 class Pago(Base, AuditMixin):

@@ -8,6 +8,7 @@ from backend.app.routes.usuario_route import router as user_router
 from backend.app.routes.cliente_route import router as cliente_route
 from backend.app.routes.auth_route import router as auth_router
 from backend.app.core.config import settings
+from backend.app.routes.admin_route import router as admin_router
 
 from backend.app.utils.cron_jobs import cron_procesar_licitaciones
 
@@ -51,3 +52,4 @@ app.include_router(licitacion_router)
 app.include_router(pago_router)
 app.include_router(cliente_route)
 app.include_router(auth_router)
+app.include_router(admin_router)

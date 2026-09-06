@@ -4,6 +4,8 @@ import DashboardLayout from "./components/layout/DashboardLayout.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
 import DashboardPage from "./pages/DashboardPage.jsx";
 import LicitacionDetailPage from "./pages/LicitacionDetailPage.jsx";
+import AdminUsersPage from "./pages/AdminUsersPage.jsx";
+import AdminAuditPage from "./pages/AdminAuditPage.jsx";
 
 export default function App() {
   return (
@@ -14,6 +16,13 @@ export default function App() {
         <Route element={<DashboardLayout title="Licitaciones" />}>
           <Route path="/" element={<DashboardPage />} />
           <Route path="/licitaciones/:id" element={<LicitacionDetailPage />} />
+        </Route>
+      </Route>
+
+      <Route element={<PrivateRoute adminOnly={true} />}>
+        <Route element={<DashboardLayout title="Panel de Administración" />}>
+          <Route path="/admin/usuarios" element={<AdminUsersPage />} />
+          <Route path="/admin/auditoria" element={<AdminAuditPage />} />
         </Route>
       </Route>
 

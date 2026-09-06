@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, Float, ForeignKey
 from sqlalchemy.orm import relationship
-from .auditoria import AuditMixin
+from .auditMixin import AuditMixin
 from backend.app.core.database import Base
 from backend.app.models.producto import Producto  # <--- Importa la clase Producto aquí
 

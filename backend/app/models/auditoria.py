@@ -1,9 +1,13 @@
-from datetime import datetime
-from sqlalchemy import Column, DateTime, Integer, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text
+from sqlalchemy.sql import func
+from backend.app.core.database import Base
 
-class AuditMixin:
-    entidad_fecha_creacion = Column(DateTime, default=datetime.utcnow, nullable=False)
-    entidad_fecha_actualizacion = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+class AuditLog(Base):
+    __tablename__ = "audit_logs"
 
-    entidad_creador_id = Column(Integer, ForeignKey("usuario.usuario_id"), nullable=False) 
-    entidad_modificador_id = Column(Integer, ForeignKey("usuario.usuario_id"))
+    id = Column(Integer, primary_key=True, index=True)
+    usuario_id = Column(Integer, ForeignKey("usuarios.usuario_id"), nullable=True)
+    accion = Column(String(100), nullable=False)  # Ej: "LOGIN", "CREAR_LICITACION", "ELIMINAR_PRODUCTO"
+    modulo = Column(String(50), nullable=False)   # Ej: "Autenticación", "Licitaciones", "Finanzas"
+    detalles = Column(Text, nullable=True)        # Descripción legible de lo ocurrido
+    fecha_hora = Column(DateTime(timezone=True), server_default=func.now())

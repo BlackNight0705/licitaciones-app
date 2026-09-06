@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, String
-from .auditoria import AuditMixin
+from .auditMixin import AuditMixin
 from backend.app.core.database import Base
 
 class Usuario(Base, AuditMixin):

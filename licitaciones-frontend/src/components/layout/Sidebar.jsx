@@ -1,13 +1,26 @@
 import { NavLink } from "react-router-dom";
-import { LayoutGrid, FileText, LogOut } from "lucide-react";
+import { LayoutGrid, FileText, Users, ShieldCheck, LogOut } from "lucide-react";
 import { useAuth } from "../../context/AuthContext.jsx";
-
-const navItems = [
-  { to: "/", label: "Licitaciones", icon: LayoutGrid, end: true },
-];
 
 export default function Sidebar({ isOpen, onNavigate }) {
   const { logout } = useAuth();
+  
+  // Verificamos si el usuario actual es administrador
+  const usuarioRol = localStorage.getItem("usuario_rol");
+  const isAdmin = usuarioRol === "admin";
+
+  // Definimos los enlaces base para todos los usuarios
+  const navItems = [
+    { to: "/", label: "Licitaciones", icon: LayoutGrid, end: true },
+  ];
+
+  // Si es administrador, agregamos las rutas de gestión y auditoría al menú
+  if (isAdmin) {
+    navItems.push(
+      { to: "/admin/usuarios", label: "Usuarios y Clientes", icon: Users },
+      { to: "/admin/auditoria", label: "Bitácora de Auditoría", icon: ShieldCheck }
+    );
+  }
 
   return (
     <aside
