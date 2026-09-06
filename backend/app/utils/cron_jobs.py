@@ -42,12 +42,12 @@ async def cron_procesar_licitaciones():
                             titulo=licitacion.licitacion_titulo
                         )
                 
-                # 2. Si faltan menos de 48 horas -> Enviar recordatorio (puedes agregar un flag de control si deseas evitar duplicados)
+                # 2. Si faltan menos de 48 horas -> Enviar recordatorio
                 elif timedelta(hours=0) < tiempo_restante <= timedelta(hours=48):
                     cliente_email = getattr(licitacion.cliente, "cliente_email", None) if licitacion.cliente else None
                     if cliente_email:
                         await enviar_recordatorio(
-                            cliente_email=cliente_email,
+                            destinatarios=[cliente_email], # <--- Corregido como lista
                             titulo=licitacion.licitacion_titulo,
                             fecha_limite=str(licitacion.licitacion_fecha_limite)
                         )

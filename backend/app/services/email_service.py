@@ -6,6 +6,7 @@ from backend.app.core.config import settings
 
 resend.api_key = settings.EMAIL_API_KEY
 
+#este servicio es para enviar correos de activación de licitaciones a los clientes. Se utiliza en el endpoint que activa la licitación formal y envía el correo con el documento adjunto.
 async def enviar_correo(destinatario: str, asunto: str, contenido: str, adjunto_url: str = None, nombre_archivo: str = "propuesta.pdf"):
     params = {
         "from": settings.EMAIL_FROM,
@@ -39,7 +40,7 @@ async def enviar_correo(destinatario: str, asunto: str, contenido: str, adjunto_
         print(f"Error al enviar el correo con Resend: {e}")
         return None
 
-
+#este servicio es para enviar correos de activación de licitaciones a los clientes. Se utiliza en el endpoint que activa la licitación formal y envía el correo con el documento adjunto.
 async def enviar_correo_activacion(cliente_email: str, titulo: str, fecha_limite: str, documento_url: str):
     contenido = f"""
         <h3>Propuesta de Licitación</h3>
@@ -55,8 +56,12 @@ async def enviar_correo_activacion(cliente_email: str, titulo: str, fecha_limite
         nombre_archivo=f"propuesta_{titulo.replace(' ', '_')}.pdf"
     )
 
+#Este servicio es para enviar recordatorios y notificaciones de licitaciones vencidas. Se utiliza en el cron job que procesa las licitaciones activas y envía correos según la fecha límite.
+async def enviar_recordatorio(destinatarios: str | list[str], titulo: str, fecha_limite: str):
+    # Si pasan un string único, lo convertimos a lista
+    if isinstance(destinatarios, str):
+        destinatarios = [destinatarios]
 
-async def enviar_recordatorio(destinatarios: list[str], titulo: str, fecha_limite: str):
     contenido = f"""
         <h3>Recordatorio de Licitación</h3>
         <p>La licitación <b>{titulo}</b> está próxima a vencer.</p>
@@ -64,7 +69,7 @@ async def enviar_recordatorio(destinatarios: list[str], titulo: str, fecha_limit
     """
     params = {
         "from": settings.EMAIL_FROM,
-        "to": destinatarios,  # Resend acepta una lista de emails ["cliente@mail.com", "usuario@mail.com"]
+        "to": destinatarios,
         "subject": "Recordatorio de Licitación",
         "html": contenido,
     }
@@ -76,6 +81,7 @@ async def enviar_recordatorio(destinatarios: list[str], titulo: str, fecha_limit
         return None
 
 
+#este servicio es para enviar notificaciones de licitaciones vencidas. Se utiliza en el cron job que procesa las licitaciones activas y envía correos según la fecha límite.
 async def enviar_correo_vencida(cliente_email: str, titulo: str):
     contenido = f"""
         <h3>Licitación Vencida</h3>
