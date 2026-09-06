@@ -20,6 +20,9 @@ class LicitacionBase(BaseModel):
     licitacion_fecha_limite: datetime = Field(..., description="Fecha límite de la licitación.")
     licitacion_documento_url: Optional[str] = Field(None, max_length=500, description="URL del documento adjunto.")
 
+class LicitacionCreate(LicitacionBase):
+    licitacion_cliente_id: int = Field(..., gt=0, description="El ID del cliente asociado debe ser mayor a 0.")
+
     @field_validator("licitacion_fecha_limite")
     @classmethod
     def validar_fecha_no_pasada(cls, value: datetime | date) -> datetime | date:
@@ -27,9 +30,6 @@ class LicitacionBase(BaseModel):
         if fecha_ingresada < date.today():
             raise ValueError("La fecha límite no puede ser anterior al día de hoy.")
         return value
-
-class LicitacionCreate(LicitacionBase):
-    licitacion_cliente_id: int = Field(..., gt=0, description="El ID del cliente asociado debe ser mayor a 0.")
 
 class LicitacionResponse(LicitacionBase):
     licitacion_id: int = Field(..., gt=0)
