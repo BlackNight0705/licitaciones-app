@@ -21,7 +21,7 @@ async def lifespan(_app):
     scheduler.add_job(
         cron_procesar_licitaciones,
         "interval",
-        minutes=30
+        minutes=2
     )
     scheduler.start()
     yield
