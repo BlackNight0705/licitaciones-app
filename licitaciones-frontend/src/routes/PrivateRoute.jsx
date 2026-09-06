@@ -2,7 +2,7 @@ import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import useTokenRefresher from "../components/refresh/useTokenRefresher.jsx";
 
-export default function PrivateRoute() {
+export default function PrivateRoute({ adminOnly = false }) {
   const { isAuthenticated } = useAuth();
   const location = useLocation();
 
