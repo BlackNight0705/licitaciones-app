@@ -69,7 +69,7 @@ async def refresh_token(
     Renueva el token de acceso y lo actualiza en la cookie HttpOnly.
     """
     # 30 minutos de expiración en segundos para el max_age (30 * 60 = 1800)
-    access_token_expires = timedelta(minutes=30)
+    access_token_expires = timedelta(minutes=2)
     
     # Mantenemos la misma estructura del login usando el id del usuario en "sub"
     nuevo_token = crear_access_token(
